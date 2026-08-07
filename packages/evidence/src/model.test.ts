@@ -13,12 +13,19 @@ describe("source", () => {
     expect(source.id).toBe("source:example");
     expect(Object.isFrozen(source)).toBe(true);
     expect(Object.isFrozen(source.properties)).toBe(true);
+    expect(Object.isFrozen(source.properties.nested)).toBe(true);
   });
 
   it("rejects an empty source id", () => {
     expect(() => createSource({ id: " ", kind: "document" })).toThrow(
       "Source ID must not be empty",
     );
+  });
+
+  it("rejects an unsupported source kind at runtime", () => {
+    expect(() =>
+      createSource({ id: "source:example", kind: "unknown" as never }),
+    ).toThrow("Unsupported source kind: unknown");
   });
 });
 
