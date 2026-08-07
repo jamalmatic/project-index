@@ -1,5 +1,5 @@
 import type { AssertionId, EntityId } from "@project-index/core";
-import { deepFreeze } from "@project-index/core";
+import { assertionId, deepFreeze, entityId } from "@project-index/core";
 
 export type SourceId = string & { readonly __brand: "SourceId" };
 export type EvidenceId = string & { readonly __brand: "EvidenceId" };
@@ -10,13 +10,18 @@ const requiredText = (value: string, name: string): string => {
   return normalized;
 };
 
-export const sourceId = (value: string): SourceId =>
-  requiredText(value, "Source ID") as SourceId;
-
-export const evidenceId = (value: string): EvidenceId =>
-  requiredText(value, "Evidence ID") as EvidenceId;
+export const sourceId = (value: string): SourceId => requiredText(value, "Source ID") as SourceId;
+export const evidenceId = (value: string): EvidenceId => requiredText(value, "Evidence ID") as EvidenceId;
 
 export type SourceKind = "document" | "repository" | "api" | "database" | "other";
+
+const SOURCE_KINDS: ReadonlySet<SourceKind> = new Set([
+  "document",
+  "repository",
+  "api",
+  "database",
+  "other",
+]);
 
 export interface Source {
   readonly id: SourceId;
@@ -55,8 +60,10 @@ export interface SourceInput {
   readonly properties?: Readonly<Record<string, unknown>>;
 }
 
-export const createSource = (input: SourceInput): Source =>
-  deepFreeze({
+export const createSource = (input: SourceInput): Source => {
+  if (!SOURCE_KINDS.has(input.kind)) throw new Error(`Unsupported source kind: ${String(input.kind)}`);
+
+  return deepFreeze({
     id: sourceId(input.id),
     kind: input.kind,
     uri: input.uri?.trim() || undefined,
@@ -64,6 +71,7 @@ export const createSource = (input: SourceInput): Source =>
     publisher: input.publisher?.trim() || undefined,
     properties: { ...(input.properties ?? {}) },
   });
+};
 
 export interface EvidenceInput {
   readonly id: string | EvidenceId;
@@ -97,8 +105,8 @@ export const createEvidence = (input: EvidenceInput): Evidence => {
   return deepFreeze({
     id: evidenceId(input.id),
     sourceId: sourceId(input.sourceId),
-    assertionId: input.assertionId ? (input.assertionId as AssertionId) : undefined,
-    entityId: input.entityId ? (input.entityId as EntityId) : undefined,
+    assertionId: input.assertionId ? assertionId(input.assertionId) : undefined,
+    entityId: input.entityId ? entityId(input.entityId) : undefined,
     locator: input.locator ? { ...input.locator } : undefined,
     observedAt: input.observedAt?.trim() || undefined,
     capturedAt: input.capturedAt?.trim() || undefined,
