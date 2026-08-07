@@ -6,7 +6,10 @@ import { createValidationIssue, createValidationResult, type ValidationIssue, ty
 const missing = (ruleId: string, message: string, path: string): ValidationIssue =>
   createValidationIssue({ ruleId, severity: "error", message, path });
 
-const validateEntityReferences = async (subject: Assertion | Relationship, unitOfWork: UnitOfWork): Promise<ValidationIssue[]> => {
+const validateEntityReferencesForRelation = async (
+  subject: Assertion | Relationship,
+  unitOfWork: UnitOfWork,
+): Promise<ValidationIssue[]> => {
   const issues: ValidationIssue[] = [];
   if (!(await unitOfWork.entities.getById(subject.subject))) {
     issues.push(missing(`${subject.id}.subject`, `Referenced entity ${subject.subject} does not exist`, "subject"));
@@ -23,7 +26,7 @@ export const validateAssertionReferences = async (
 ): Promise<ValidationResult> =>
   createValidationResult({
     subjectId: assertion.id,
-    issues: await validateEntityReferences(assertion, unitOfWork),
+    issues: await validateEntityReferencesForRelation(assertion, unitOfWork),
   });
 
 export const validateRelationshipReferences = async (
@@ -32,7 +35,7 @@ export const validateRelationshipReferences = async (
 ): Promise<ValidationResult> =>
   createValidationResult({
     subjectId: relationship.id,
-    issues: await validateEntityReferences(relationship, unitOfWork),
+    issues: await validateEntityReferencesForRelation(relationship, unitOfWork),
   });
 
 export const validateEvidenceReferences = async (
@@ -41,9 +44,6 @@ export const validateEvidenceReferences = async (
 ): Promise<ValidationResult> => {
   const issues: ValidationIssue[] = [];
 
-  if (!(await unitOfWork.evidence.getById(evidence.id))) {
-    // The evidence itself is not required to be persisted before validation.
-  }
   if (!(await unitOfWork.sources.getById(evidence.sourceId))) {
     issues.push(missing("evidence.reference.source", `Referenced source ${evidence.sourceId} does not exist`, "sourceId"));
   }
