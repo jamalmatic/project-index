@@ -121,6 +121,9 @@ importers:
       '@project-index/ontology':
         specifier: workspace:*
         version: link:../ontology
+      '@project-index/storage':
+        specifier: workspace:*
+        version: link:../storage
 
 packages:
 
