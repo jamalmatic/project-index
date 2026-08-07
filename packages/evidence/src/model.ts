@@ -15,13 +15,7 @@ export const evidenceId = (value: string): EvidenceId => requiredText(value, "Ev
 
 export type SourceKind = "document" | "repository" | "api" | "database" | "other";
 
-const SOURCE_KINDS: ReadonlySet<SourceKind> = new Set([
-  "document",
-  "repository",
-  "api",
-  "database",
-  "other",
-]);
+const SOURCE_KINDS: ReadonlySet<SourceKind> = new Set(["document", "repository", "api", "database", "other"]);
 
 export interface Source {
   readonly id: SourceId;
@@ -63,14 +57,16 @@ export interface SourceInput {
 export const createSource = (input: SourceInput): Source => {
   if (!SOURCE_KINDS.has(input.kind)) throw new Error(`Unsupported source kind: ${String(input.kind)}`);
 
-  return deepFreeze({
+  const source: Source = {
     id: sourceId(input.id),
     kind: input.kind,
-    uri: input.uri?.trim() || undefined,
-    title: input.title?.trim() || undefined,
-    publisher: input.publisher?.trim() || undefined,
     properties: { ...(input.properties ?? {}) },
-  });
+    ...(input.uri?.trim() ? { uri: input.uri.trim() } : {}),
+    ...(input.title?.trim() ? { title: input.title.trim() } : {}),
+    ...(input.publisher?.trim() ? { publisher: input.publisher.trim() } : {}),
+  };
+
+  return deepFreeze(source);
 };
 
 export interface EvidenceInput {
@@ -86,31 +82,25 @@ export interface EvidenceInput {
 }
 
 export const createEvidence = (input: EvidenceInput): Evidence => {
-  if (!input.assertionId && !input.entityId) {
-    throw new Error("Evidence must reference an assertion or entity");
-  }
-
+  if (!input.assertionId && !input.entityId) throw new Error("Evidence must reference an assertion or entity");
   if (input.locator?.lineStart !== undefined && input.locator.lineStart < 1) {
     throw new Error("Evidence locator lineStart must be at least 1");
   }
-
-  if (
-    input.locator?.lineEnd !== undefined &&
-    input.locator.lineStart !== undefined &&
-    input.locator.lineEnd < input.locator.lineStart
-  ) {
+  if (input.locator?.lineEnd !== undefined && input.locator.lineStart !== undefined && input.locator.lineEnd < input.locator.lineStart) {
     throw new Error("Evidence locator lineEnd must not precede lineStart");
   }
 
-  return deepFreeze({
+  const evidence: Evidence = {
     id: evidenceId(input.id),
     sourceId: sourceId(input.sourceId),
-    assertionId: input.assertionId ? assertionId(input.assertionId) : undefined,
-    entityId: input.entityId ? entityId(input.entityId) : undefined,
-    locator: input.locator ? { ...input.locator } : undefined,
-    observedAt: input.observedAt?.trim() || undefined,
-    capturedAt: input.capturedAt?.trim() || undefined,
-    excerpt: input.excerpt?.trim() || undefined,
     properties: { ...(input.properties ?? {}) },
-  });
+    ...(input.assertionId ? { assertionId: assertionId(input.assertionId) } : {}),
+    ...(input.entityId ? { entityId: entityId(input.entityId) } : {}),
+    ...(input.locator ? { locator: { ...input.locator } } : {}),
+    ...(input.observedAt?.trim() ? { observedAt: input.observedAt.trim() } : {}),
+    ...(input.capturedAt?.trim() ? { capturedAt: input.capturedAt.trim() } : {}),
+    ...(input.excerpt?.trim() ? { excerpt: input.excerpt.trim() } : {}),
+  };
+
+  return deepFreeze(evidence);
 };
