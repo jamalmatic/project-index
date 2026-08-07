@@ -1,0 +1,7 @@
+{
+  "name": "@project-index/api",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "tsc --noEmit", "lint": "eslint .", "test": "vitest run", "typecheck": "tsc --noEmit", "dev": "node --version" },
+  "dependencies": { "@project-index/domain": "workspace:*", "@project-index/ontology": "workspace:*", "@project-index/evidence": "workspace:*", "@project-index/inference": "workspace:*", "@project-index/validation": "workspace:*", "@project-index/storage": "workspace:*" }
+}

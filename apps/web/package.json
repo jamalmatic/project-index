@@ -1,0 +1,6 @@
+{
+  "name": "@project-index/web",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "tsc --noEmit", "lint": "eslint .", "test": "vitest run", "typecheck": "tsc --noEmit", "dev": "node --version" }
+}
