@@ -1,4 +1,4 @@
-import type { Assertion, Entity, Relationship } from "@project-index/domain";
+import type { Assertion, Relationship } from "@project-index/domain";
 import type { Evidence } from "@project-index/evidence";
 import type { UnitOfWork } from "@project-index/storage";
 import { createValidationIssue, createValidationResult, type ValidationIssue, type ValidationResult, type ValidationSubject } from "./model";
