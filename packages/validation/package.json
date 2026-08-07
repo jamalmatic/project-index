@@ -4,5 +4,5 @@
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "build": "tsc --noEmit", "lint": "eslint .", "test": "vitest run", "typecheck": "tsc --noEmit" },
-  "dependencies": { "@project-index/domain": "workspace:*", "@project-index/ontology": "workspace:*", "@project-index/evidence": "workspace:*" }
+  "dependencies": { "@project-index/core": "workspace:*", "@project-index/domain": "workspace:*", "@project-index/ontology": "workspace:*", "@project-index/evidence": "workspace:*" }
 }
