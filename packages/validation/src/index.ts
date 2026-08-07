@@ -3,4 +3,5 @@ export * from "./rules";
 export * from "./referential";
 export * from "./consistency";
 export * from "./temporal";
-export * from "./orchestrator";
+export { validate, validateMany, validateAssertion, validateRelationship, validateEvidence } from "./orchestrator";
+export type { ValidationContext } from "./orchestrator";
