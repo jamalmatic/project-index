@@ -59,5 +59,4 @@ export const validateEvidenceReferences = async (
 
 export const validateEntityReferences = async (
   entity: Entity,
-  _unitOfWork: UnitOfWork,
 ): Promise<ValidationResult> => createValidationResult({ subjectId: entity.id });
