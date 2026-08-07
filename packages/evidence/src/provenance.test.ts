@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { assertionId, entityId } from "@project-index/core";
 import { createDerivation, createProvenanceRecord } from "./provenance";
 
 describe("provenance", () => {
   it("creates an immutable assertion provenance record", () => {
     const record = createProvenanceRecord({
       id: "prov:1",
-      subject: { role: "assertion", assertionId: "assertion:1" },
+      subject: { role: "assertion", assertionId: assertionId("assertion:1") },
       generatedBy: "importer:v1",
       properties: { nested: { value: true } },
     });
@@ -30,8 +31,8 @@ describe("provenance", () => {
         id: "prov:1",
         subject: {
           role: "assertion",
-          assertionId: "a1",
-          entityId: "e1",
+          assertionId: assertionId("a1"),
+          entityId: entityId("e1"),
         },
       }),
     ).toThrow("Provenance reference must identify exactly one target");
@@ -41,7 +42,7 @@ describe("provenance", () => {
     expect(() =>
       createProvenanceRecord({
         id: "prov:1",
-        subject: { role: "evidence", assertionId: "a1" },
+        subject: { role: "evidence", assertionId: assertionId("a1") },
       }),
     ).toThrow("Evidence provenance reference requires evidenceId");
   });
@@ -51,8 +52,8 @@ describe("derivation", () => {
   it("creates an immutable derivation", () => {
     const derivation = createDerivation({
       id: "derivation:1",
-      outputAssertionId: "assertion:derived",
-      inputAssertionIds: ["assertion:a", "assertion:b"],
+      outputAssertionId: assertionId("assertion:derived"),
+      inputAssertionIds: [assertionId("assertion:a"), assertionId("assertion:b")],
       evidenceIds: ["evidence:1"],
       ruleId: "rule:combine-v1",
       activityId: "activity:1",
@@ -81,7 +82,7 @@ describe("derivation", () => {
       createDerivation({
         id: "derivation:1",
         outputAssertionId: "assertion:derived",
-        inputAssertionIds: ["assertion:a", "assertion:a"],
+        inputAssertionIds: [assertionId("assertion:a"), assertionId("assertion:a")],
         ruleId: "rule:v1",
       }),
     ).toThrow("Derivation input assertions must be unique");
