@@ -35,17 +35,14 @@ const runContract = <T extends { readonly id: string }, R>(testCase: RepositoryC
   });
 };
 
-const entity = createEntity({ id: "entity:test", type: "person", identity: { canonical: "entity:test" } });
-const assertion = createAssertion({ id: "assertion:test", subject: entity.id, predicate: "name", object: "Project Index" });
-const relationship = createRelationship({ id: "relationship:test", type: "related_to", subject: entity.id, object: entity.id });
+const entity = createEntity({ id: "entity:test", type: "person" });
+const assertion = createAssertion({ id: "assertion:test", subject: entity.id, predicate: "name", object: entity.id });
+const relationship = createRelationship({ id: "relationship:test", predicate: "related_to", subject: entity.id, object: entity.id });
 const source = createSource({ id: "source:test", kind: "document" });
 const evidence = createEvidence({ id: "evidence:test", sourceId: source.id, assertionId: assertion.id });
 
-runContract({ name: "EntityRepository", create: () => new MemoryEntityRepository(), get: (r, id) => r.getById(id as never), save: (r, v) => r.save(v), value: entity });
-runContract({ name: "AssertionRepository", create: () => new MemoryAssertionRepository(), get: (r, id) => r.getById(id as never), save: (r, v) => r.save(v), value: assertion });
-runContract({ name: "RelationshipRepository", create: () => new MemoryRelationshipRepository(), get: (r, id) => r.getById(id as never), save: (r, v) => r.save(v), value: relationship });
-runContract<Source, SourceRepository>({ name: "SourceRepository", create: () => new MemorySourceRepository(), get: (r, id) => r.getById(id as never), save: (r, v) => r.save(v), value: source });
-runContract<Evidence, EvidenceRepository>({ name: "EvidenceRepository", create: () => new MemoryEvidenceRepository(), get: (r, id) => r.getById(id as never), save: (r, v) => r.save(v), value: evidence });
-
-void ({} as AssertionRepository);
-void ({} as EntityRepository);
+runContract<Entity, EntityRepository>({ name: "EntityRepository", create: () => new MemoryEntityRepository(), get: (r, id) => r.getById(id), save: (r, v) => r.save(v), value: entity });
+runContract<Assertion, AssertionRepository>({ name: "AssertionRepository", create: () => new MemoryAssertionRepository(), get: (r, id) => r.getById(id), save: (r, v) => r.save(v), value: assertion });
+runContract<Relationship, RelationshipRepository>({ name: "RelationshipRepository", create: () => new MemoryRelationshipRepository(), get: (r, id) => r.getById(id), save: (r, v) => r.save(v), value: relationship });
+runContract<Source, SourceRepository>({ name: "SourceRepository", create: () => new MemorySourceRepository(), get: (r, id) => r.getById(id), save: (r, v) => r.save(v), value: source });
+runContract<Evidence, EvidenceRepository>({ name: "EvidenceRepository", create: () => new MemoryEvidenceRepository(), get: (r, id) => r.getById(id), save: (r, v) => r.save(v), value: evidence });
