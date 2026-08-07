@@ -1,19 +1,15 @@
 import type { Assertion, Entity, Relationship } from "@project-index/domain";
 import type { Evidence } from "@project-index/evidence";
 import type { UnitOfWork } from "@project-index/storage";
-import { createValidationIssue, createValidationResult, type ValidationIssue, type ValidationResult } from "./model";
+import { createValidationIssue, createValidationResult, type ValidationIssue, type ValidationResult, type ValidationSubject } from "./model";
 import { validateAssertionReferences, validateEvidenceReferences, validateRelationshipReferences } from "./referential";
 import { validateAssertionConsistency, validateRelationshipConsistency, type ConsistencySnapshot } from "./consistency";
 import { validateEvidenceTemporalConsistency } from "./temporal";
-
-export type ValidationSubject = Entity | Assertion | Relationship | Evidence;
 
 export interface ValidationContext {
   readonly unitOfWork: UnitOfWork;
   readonly consistency?: ConsistencySnapshot;
 }
-
-const subjectId = (subject: ValidationSubject): string => subject.id;
 
 const structural = (subject: ValidationSubject): ValidationIssue[] => {
   const issues: ValidationIssue[] = [];
@@ -23,33 +19,36 @@ const structural = (subject: ValidationSubject): ValidationIssue[] => {
   return issues;
 };
 
-export const validate = async (
-  subject: ValidationSubject,
-  context: ValidationContext,
-): Promise<ValidationResult> => {
-  const issues: ValidationIssue[] = [...structural(subject)];
-
-  if ("sourceId" in subject) {
-    const result = await validateEvidenceReferences(subject, context.unitOfWork);
-    issues.push(...result.issues);
-    issues.push(...validateEvidenceTemporalConsistency(subject).issues);
-  } else if ("predicate" in subject) {
-    const referenceResult = await validateAssertionReferences(subject, context.unitOfWork);
-    issues.push(...referenceResult.issues);
-    if (context.consistency) issues.push(...validateAssertionConsistency(subject, context.consistency).issues);
-  }
-
-  if ("subject" in subject && "predicate" in subject && !issues.some((issue) => issue.ruleId.startsWith("assertion."))) {
-    if (context.consistency) issues.push(...validateRelationshipConsistency(subject as Relationship, context.consistency).issues);
-  }
-
-  return createValidationResult({ subjectId: subjectId(subject), issues });
+export const validateAssertion = async (assertion: Assertion, context: ValidationContext): Promise<ValidationResult> => {
+  const issues = structural(assertion);
+  issues.push(...(await validateAssertionReferences(assertion, context.unitOfWork)).issues);
+  if (context.consistency) issues.push(...validateAssertionConsistency(assertion, context.consistency).issues);
+  return createValidationResult({ subjectId: assertion.id, issues });
 };
 
-export const validateMany = async (
-  subjects: readonly ValidationSubject[],
-  context: ValidationContext,
-): Promise<ValidationResult> => {
+export const validateRelationship = async (relationship: Relationship, context: ValidationContext): Promise<ValidationResult> => {
+  const issues = structural(relationship);
+  issues.push(...(await validateRelationshipReferences(relationship, context.unitOfWork)).issues);
+  if (context.consistency) issues.push(...validateRelationshipConsistency(relationship, context.consistency).issues);
+  return createValidationResult({ subjectId: relationship.id, issues });
+};
+
+export const validateEvidence = async (evidence: Evidence, context: ValidationContext): Promise<ValidationResult> => {
+  const issues = structural(evidence);
+  issues.push(...(await validateEvidenceReferences(evidence, context.unitOfWork)).issues);
+  issues.push(...validateEvidenceTemporalConsistency(evidence).issues);
+  return createValidationResult({ subjectId: evidence.id, issues });
+};
+
+export const validate = async (subject: ValidationSubject, context: ValidationContext): Promise<ValidationResult> => {
+  if ("sourceId" in subject) return validateEvidence(subject, context);
+  if ("identity" in subject) return createValidationResult({ subjectId: subject.id, issues: structural(subject) });
+  // Assertion and Relationship have the same runtime shape; their branded IDs
+  // are compile-time distinctions. Use the typed entry points for those kinds.
+  return createValidationResult({ subjectId: subject.id, issues: structural(subject) });
+};
+
+export const validateMany = async (subjects: readonly ValidationSubject[], context: ValidationContext): Promise<ValidationResult> => {
   const issues: ValidationIssue[] = [];
   for (const subject of subjects) {
     const result = await validate(subject, context);
