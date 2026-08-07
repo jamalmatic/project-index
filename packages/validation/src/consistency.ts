@@ -21,17 +21,26 @@ export const validateAssertionConsistency = (
 ): ValidationResult => {
   const issues: ValidationIssue[] = [];
   const sameTriple = snapshot.assertions.filter(
-    (candidate) => candidate.id !== assertion.id && tripleKey(candidate.subject, candidate.predicate, candidate.object) === tripleKey(assertion.subject, assertion.predicate, assertion.object),
+    (candidate) =>
+      candidate.id !== assertion.id &&
+      tripleKey(candidate.subject, candidate.predicate, candidate.object) ===
+        tripleKey(assertion.subject, assertion.predicate, assertion.object),
   );
-  if (sameTriple.length > 0) {
-    issues.push(error("assertion.duplicate", `Assertion duplicates ${sameTriple[0].id}`, "id"));
+  const duplicate = sameTriple[0];
+  if (duplicate) {
+    issues.push(error("assertion.duplicate", `Assertion duplicates ${duplicate.id}`, "id"));
   }
 
   const conflicting = snapshot.assertions.filter(
-    (candidate) => candidate.id !== assertion.id && contradictionKey(candidate.subject, candidate.predicate) === contradictionKey(assertion.subject, assertion.predicate) && candidate.object !== assertion.object,
+    (candidate) =>
+      candidate.id !== assertion.id &&
+      contradictionKey(candidate.subject, candidate.predicate) ===
+        contradictionKey(assertion.subject, assertion.predicate) &&
+      candidate.object !== assertion.object,
   );
-  if (conflicting.length > 0) {
-    issues.push(error("assertion.conflict", `Assertion conflicts with ${conflicting[0].id}`, "object"));
+  const conflict = conflicting[0];
+  if (conflict) {
+    issues.push(error("assertion.conflict", `Assertion conflicts with ${conflict.id}`, "object"));
   }
 
   return createValidationResult({ subjectId: assertion.id, issues });
@@ -47,7 +56,10 @@ export const validateRelationshipConsistency = (
   }
 
   const duplicate = snapshot.relationships.find(
-    (candidate) => candidate.id !== relationship.id && tripleKey(candidate.subject, candidate.predicate, candidate.object) === tripleKey(relationship.subject, relationship.predicate, relationship.object),
+    (candidate) =>
+      candidate.id !== relationship.id &&
+      tripleKey(candidate.subject, candidate.predicate, candidate.object) ===
+        tripleKey(relationship.subject, relationship.predicate, relationship.object),
   );
   if (duplicate) {
     issues.push(error("relationship.duplicate", `Relationship duplicates ${duplicate.id}`, "id"));
@@ -66,8 +78,5 @@ export const validateSnapshotConsistency = (snapshot: ConsistencySnapshot): Vali
     const result = validateRelationshipConsistency(relationship, snapshot);
     issues.push(...result.issues);
   }
-  return createValidationResult({
-    subjectId: "snapshot:consistency",
-    issues,
-  });
+  return createValidationResult({ subjectId: "snapshot:consistency", issues });
 };
