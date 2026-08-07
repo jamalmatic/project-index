@@ -7,6 +7,10 @@
   "dependencies": {
     "@project-index/core": "workspace:*",
     "@project-index/domain": "workspace:*",
-    "@project-index/evidence": "workspace:*"
+    "@project-index/evidence": "workspace:*",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5"
   }
 }
