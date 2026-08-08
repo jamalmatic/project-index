@@ -33,6 +33,14 @@ export interface ValidatedWriterOptions {
   readonly consistency?: ValidationContext["consistency"];
 }
 
+export type ValidatedWriteOperation =
+  | { readonly kind: "entity"; readonly input: EntityInput }
+  | { readonly kind: "assertion"; readonly input: AssertionInput }
+  | { readonly kind: "relationship"; readonly input: RelationshipInput }
+  | { readonly kind: "evidence"; readonly input: EvidenceInput };
+
+export type ValidatedWriteResult = Entity | Assertion | Relationship | Evidence;
+
 export class ValidatedWriter {
   private readonly unitOfWork: UnitOfWork;
   private readonly context: ValidationContext;
@@ -72,6 +80,74 @@ export class ValidatedWriter {
     await this.requireValid(validateEvidence(evidence, this.context));
     await this.write(() => this.unitOfWork.evidence.save(evidence));
     return evidence;
+  }
+
+  async createMany(operations: readonly ValidatedWriteOperation[]): Promise<readonly ValidatedWriteResult[]> {
+    const prepared: ValidatedWriteResult[] = [];
+    const issues = [];
+
+    for (const operation of operations) {
+      try {
+        const result = await this.prepare(operation);
+        prepared.push(result.value);
+        issues.push(...result.issues);
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    if (issues.length) {
+      throw new ValidationError(createValidationResult({ subjectId: "validation:batch", issues }));
+    }
+
+    try {
+      for (const value of prepared) {
+        await this.save(value);
+      }
+      await this.unitOfWork.commit();
+      return prepared;
+    } catch (error) {
+      await this.unitOfWork.rollback();
+      throw error;
+    }
+  }
+
+  private async prepare(operation: ValidatedWriteOperation): Promise<{ value: ValidatedWriteResult; issues: ValidationResult["issues"] }> {
+    switch (operation.kind) {
+      case "entity": {
+        const value = createEntity(operation.input);
+        return { value, issues: [] };
+      }
+      case "assertion": {
+        const value = createAssertion(operation.input);
+        const result = await validateAssertion(value, this.context);
+        return { value, issues: result.issues };
+      }
+      case "relationship": {
+        const value = createRelationship(operation.input);
+        const result = await validateRelationship(value, this.context);
+        return { value, issues: result.issues };
+      }
+      case "evidence": {
+        const value = createEvidence(operation.input);
+        const result = await validateEvidence(value, this.context);
+        return { value, issues: result.issues };
+      }
+    }
+  }
+
+  private async save(value: ValidatedWriteResult): Promise<void> {
+    if ("sourceId" in value) {
+      await this.unitOfWork.evidence.save(value);
+    } else if ("predicate" in value) {
+      if ("subject" in value && "object" in value) {
+        await this.unitOfWork.relationships.save(value);
+      } else {
+        await this.unitOfWork.assertions.save(value);
+      }
+    } else {
+      await this.unitOfWork.entities.save(value);
+    }
   }
 
   private async requireValid(resultPromise: Promise<ValidationResult>): Promise<void> {
