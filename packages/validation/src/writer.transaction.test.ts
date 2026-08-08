@@ -3,37 +3,23 @@ import type { UnitOfWork } from "@project-index/storage";
 import { ValidatedWriter } from "./writer";
 
 const makeUnitOfWork = (): UnitOfWork => ({
-  entities: {
-    getById: vi.fn(),
-    save: vi.fn().mockResolvedValue(undefined),
-  },
-  assertions: {
-    getById: vi.fn(),
-    save: vi.fn().mockResolvedValue(undefined),
-  },
-  relationships: {
-    getById: vi.fn(),
-    save: vi.fn().mockResolvedValue(undefined),
-  },
-  sources: {
-    getById: vi.fn(),
-    save: vi.fn().mockResolvedValue(undefined),
-  },
-  evidence: {
-    getById: vi.fn(),
-    save: vi.fn().mockResolvedValue(undefined),
-  },
+  entities: { getById: vi.fn(), save: vi.fn().mockResolvedValue(undefined) },
+  assertions: { getById: vi.fn(), save: vi.fn().mockResolvedValue(undefined) },
+  relationships: { getById: vi.fn(), save: vi.fn().mockResolvedValue(undefined) },
+  sources: { getById: vi.fn(), save: vi.fn().mockResolvedValue(undefined) },
+  evidence: { getById: vi.fn(), save: vi.fn().mockResolvedValue(undefined) },
   commit: vi.fn().mockResolvedValue(undefined),
   rollback: vi.fn().mockResolvedValue(undefined),
 });
+
+const validEntityInput = { id: "entity-1", type: "person", properties: {} } as const;
 
 describe("ValidatedWriter transaction semantics", () => {
   it("commits exactly once after a successful write", async () => {
     const unitOfWork = makeUnitOfWork();
     const writer = new ValidatedWriter({ unitOfWork });
-    const input = { identity: "entity-1", type: "person", properties: {} } as never;
 
-    await writer.createEntity(input);
+    await writer.createEntity(validEntityInput);
 
     expect(unitOfWork.entities.save).toHaveBeenCalledOnce();
     expect(unitOfWork.commit).toHaveBeenCalledOnce();
@@ -44,10 +30,8 @@ describe("ValidatedWriter transaction semantics", () => {
     const unitOfWork = makeUnitOfWork();
     vi.mocked(unitOfWork.entities.save).mockRejectedValueOnce(new Error("save failed"));
     const writer = new ValidatedWriter({ unitOfWork });
-    const input = { identity: "entity-1", type: "person", properties: {} } as never;
 
-    await expect(writer.createEntity(input)).rejects.toThrow("save failed");
-
+    await expect(writer.createEntity(validEntityInput)).rejects.toThrow("save failed");
     expect(unitOfWork.commit).not.toHaveBeenCalled();
     expect(unitOfWork.rollback).toHaveBeenCalledOnce();
   });
@@ -56,10 +40,8 @@ describe("ValidatedWriter transaction semantics", () => {
     const unitOfWork = makeUnitOfWork();
     vi.mocked(unitOfWork.commit).mockRejectedValueOnce(new Error("commit failed"));
     const writer = new ValidatedWriter({ unitOfWork });
-    const input = { identity: "entity-1", type: "person", properties: {} } as never;
 
-    await expect(writer.createEntity(input)).rejects.toThrow("commit failed");
-
+    await expect(writer.createEntity(validEntityInput)).rejects.toThrow("commit failed");
     expect(unitOfWork.commit).toHaveBeenCalledOnce();
     expect(unitOfWork.rollback).toHaveBeenCalledOnce();
   });
