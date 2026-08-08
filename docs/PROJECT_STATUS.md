@@ -4,10 +4,11 @@
 
 ## Current state
 
-**Phase 1 — Foundation: COMPLETE**  
-**Phase 2.1 — Ingestion Contract: IN PROGRESS**
+**Phase 1 — Foundation: COMPLETE / LOCKED**  
+**Phase 2.1 — Ingestion Contract: COMPLETE / LOCKED**  
+**Next: Phase 2.2 — Discovery Primitives**
 
-Phase 1 is locked as the completed foundation baseline. Its 12 steps passed the phase completion gate with CI green. Phase 2.1 is the first capability-layer workstream and is currently at contract/specification stage.
+Phase 1 is locked as the completed foundation baseline. Its 12 steps passed the phase completion gate with CI green. Phase 2.1 is now also locked after implementation, regression testing, and CI acceptance.
 
 ## Phase 1 — Foundation
 
@@ -28,21 +29,29 @@ Phase 1 is locked as the completed foundation baseline. Its 12 steps passed the 
 
 ## Phase 2 — Capability Layer
 
-### Step 2.1 — Ingestion Contract — IN PROGRESS
+### Step 2.1 — Ingestion Contract — COMPLETE / LOCKED
 
-The contract is documented in `docs/02-phase-2/2.1-INGESTION-CONTRACT.md`. Implementation has not yet been declared complete.
+The contract is documented in `docs/02-phase-2/2.1-INGESTION-CONTRACT.md`. The implementation is in the validation package and is covered by unit, integration, transaction, and ingestion tests accepted by CI.
 
-The intended flow is:
+The implemented flow is:
 
 ```text
 normalized input
   → canonical domain construction
-  → evidence + provenance
-  → validation
+  → evidence + provenance construction
+  → complete-batch validation
+  → staged-reference validation
   → atomic persistence
+  → single commit
 ```
 
-The completion gate requires deterministic canonicalization, evidence/provenance traceability, validation-before-persist, atomic rollback behavior, and an explicit duplicate policy.
+The implementation guarantees that a multi-object batch is validated before repository mutation, references may resolve against objects staged earlier in the same batch, validation failure performs no commit, and persistence failure rolls the unit of work back. The ingestion result preserves constructed provenance metadata.
+
+Phase 2.1 intentionally does not claim independent provenance persistence because the current `UnitOfWork` persistence contract has no provenance repository. That capability remains future work and must be introduced explicitly rather than implied by the ingestion API.
+
+### Step 2.2 — Discovery Primitives — NEXT
+
+Discovery is the next active capability-layer workstream. It will define resource discovery, deterministic resource normalization, discovery evidence, detection-rule contracts, rule results, and discovery orchestration without coupling the domain to a specific parser or filesystem implementation.
 
 ## Implemented package responsibilities
 
@@ -88,6 +97,10 @@ Persistence is behind repository and `UnitOfWork` contracts. The in-memory imple
 
 The initial migration persists the canonical domain record in JSONB `data` columns with stable text primary keys and operational timestamps. Reference-oriented indexes are present for common assertion, relationship, and evidence lookups.
 
+### Ingestion atomicity
+
+The validated writer treats multi-object ingestion as a transaction boundary. All operations are prepared and validated before any repository save. Same-batch references resolve against staged objects, and only a fully valid batch reaches persistence and a single commit.
+
 ## Documentation source of truth
 
 The repository distinguishes implementation truth from the early design corpus.
@@ -98,17 +111,18 @@ The repository distinguishes implementation truth from the early design corpus.
 - `docs/00-source-of-truth/IMPLEMENTATION_MATRIX.md` — design-to-code reconciliation.
 - `docs/00-source-of-truth/RECONCILIATION_NOTES.md` — decisions made while reconciling the corpus.
 - `docs/ROADMAP.md` — approved next-phase sequence.
-- `docs/02-phase-2/2.1-INGESTION-CONTRACT.md` — current Phase 2.1 contract.
+- `docs/02-phase-2/2.1-INGESTION-CONTRACT.md` — locked Phase 2.1 contract.
 
 Documents 73–84 are treated as the strongest semantic specification set, but their capabilities are not considered implemented unless this status document and the implementation matrix say so.
 
 ## Verification state
 
-Phase 1 completion was accepted with CI green. Phase 2.1 has not yet reached its completion gate.
+Phase 1 completion was accepted with CI green. Phase 2.1 implementation, regression tests, and CI are green and the step is locked. Phase 2.2 has not yet been implemented.
 
 ## What is deliberately NOT claimed yet
 
-- Phase 2.1 ingestion implementation is not yet complete.
+- Phase 2.2 discovery primitives.
+- Independent provenance persistence through `UnitOfWork`.
 - Production-grade database migration orchestration beyond the initial migration foundation.
 - A complete public API/application surface.
 - Full inference engine behavior.
