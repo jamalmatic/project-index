@@ -13,7 +13,7 @@ The original architecture/specification corpus contains 84 Markdown documents. I
 
 The corpus is design/reference material unless the implementation matrix marks a capability as implemented.
 
-## Phase 1 — Foundation — COMPLETE
+## Phase 1 — Foundation — COMPLETE / LOCKED
 
 1. Repository structure
 2. Core domain model
@@ -30,26 +30,29 @@ The corpus is design/reference material unless the implementation matrix marks a
 
 See [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) for the exact implementation state.
 
-## Phase 2 — Capability Layer — NEXT
+## Phase 2 — Capability Layer — ACTIVE
 
 Phase 2 turns the stable foundation into the first coherent, externally useful knowledge capabilities. The sequence is derived from the 84-document corpus, but no design document is treated as implemented merely because it exists.
 
-### Step 2.1 — Ingestion contract
+### Step 2.1 — Ingestion contract — COMPLETE / LOCKED
 
 Grounded primarily in Documents 16, 18, 23, 33, 34 and 38.
 
-Deliver:
+Delivered:
 
 - normalized ingestion input contract;
 - source and evidence capture;
 - canonical entity/assertion/relationship creation;
-- provenance attachment;
+- provenance construction and result preservation;
 - deterministic ingestion result;
-- unit tests and persistence contract tests.
+- complete-batch validation;
+- intra-batch staged-reference resolution;
+- atomic persistence and single-commit semantics;
+- rollback behavior and regression tests.
 
-Acceptance gate: an input can be transformed into canonical domain objects with evidence/provenance and persisted atomically.
+Acceptance gate: **passed**. The implementation and CI are green. See `docs/02-phase-2/2.1-INGESTION-CONTRACT.md` for the locked contract and explicit non-goals.
 
-### Step 2.2 — Discovery primitives
+### Step 2.2 — Discovery primitives — NEXT
 
 Grounded primarily in Documents 19, 33–38 and 78.
 
