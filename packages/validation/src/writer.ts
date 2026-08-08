@@ -11,7 +11,7 @@ import {
 } from "@project-index/domain";
 import { createEvidence, type Evidence, type EvidenceInput } from "@project-index/evidence";
 import type { UnitOfWork } from "@project-index/storage";
-import { createValidationResult, type ValidationResult } from "./model";
+import { createValidationResult, type ValidationIssue, type ValidationResult } from "./model";
 import { validateAssertion, validateEvidence, validateRelationship, type ValidationContext } from "./orchestrator";
 
 export class ValidationError extends Error {
@@ -82,7 +82,7 @@ export class ValidatedWriter {
 
   async createMany(operations: readonly ValidatedWriteOperation[]): Promise<readonly ValidatedWriteResult[]> {
     const prepared: PreparedWrite[] = [];
-    const issues: ValidationResult["issues"] = [];
+    const issues: ValidationIssue[] = [];
 
     for (const operation of operations) {
       const result = await this.prepare(operation);
@@ -102,7 +102,7 @@ export class ValidatedWriter {
     }
   }
 
-  private async prepare(operation: ValidatedWriteOperation): Promise<{ value: PreparedWrite; issues: ValidationResult["issues"] }> {
+  private async prepare(operation: ValidatedWriteOperation): Promise<{ value: PreparedWrite; issues: readonly ValidationIssue[] }> {
     switch (operation.kind) {
       case "entity": {
         const value = createEntity(operation.input);
