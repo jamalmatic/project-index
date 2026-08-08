@@ -9,11 +9,7 @@ import {
   type Relationship,
   type RelationshipInput,
 } from "@project-index/domain";
-import {
-  createEvidence,
-  type Evidence,
-  type EvidenceInput,
-} from "@project-index/evidence";
+import { createEvidence, type Evidence, type EvidenceInput } from "@project-index/evidence";
 import type { UnitOfWork } from "@project-index/storage";
 import { createValidationResult, type ValidationResult } from "./model";
 import { validateAssertion, validateEvidence, validateRelationship, type ValidationContext } from "./orchestrator";
@@ -52,10 +48,7 @@ export class ValidatedWriter {
 
   constructor(options: ValidatedWriterOptions) {
     this.unitOfWork = options.unitOfWork;
-    this.context = {
-      unitOfWork: options.unitOfWork,
-      ...(options.consistency ? { consistency: options.consistency } : {}),
-    };
+    this.context = { unitOfWork: options.unitOfWork, ...(options.consistency ? { consistency: options.consistency } : {}) };
   }
 
   async createEntity(input: EntityInput): Promise<Entity> {
@@ -97,14 +90,10 @@ export class ValidatedWriter {
       issues.push(...result.issues);
     }
 
-    if (issues.length) {
-      throw new ValidationError(createValidationResult({ subjectId: "validation:batch", issues }));
-    }
+    if (issues.length) throw new ValidationError(createValidationResult({ subjectId: "validation:batch", issues }));
 
     try {
-      for (const operation of prepared) {
-        await this.save(operation);
-      }
+      for (const operation of prepared) await this.save(operation);
       await this.unitOfWork.commit();
       return prepared.map(({ value }) => value);
     } catch (error) {
@@ -139,18 +128,10 @@ export class ValidatedWriter {
 
   private async save(operation: PreparedWrite): Promise<void> {
     switch (operation.kind) {
-      case "entity":
-        await this.unitOfWork.entities.save(operation.value);
-        return;
-      case "assertion":
-        await this.unitOfWork.assertions.save(operation.value);
-        return;
-      case "relationship":
-        await this.unitOfWork.relationships.save(operation.value);
-        return;
-      case "evidence":
-        await this.unitOfWork.evidence.save(operation.value);
-        return;
+      case "entity": return this.unitOfWork.entities.save(operation.value);
+      case "assertion": return this.unitOfWork.assertions.save(operation.value);
+      case "relationship": return this.unitOfWork.relationships.save(operation.value);
+      case "evidence": return this.unitOfWork.evidence.save(operation.value);
     }
   }
 
