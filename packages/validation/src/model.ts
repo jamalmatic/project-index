@@ -29,6 +29,13 @@ const requiredText = (value: string, name: string): string => {
   return normalized;
 };
 
+const validateSeverity = (severity: ValidationSeverity): ValidationSeverity => {
+  if (severity !== "error" && severity !== "warning") {
+    throw new Error(`Unsupported validation severity: ${String(severity)}`);
+  }
+  return severity;
+};
+
 export const createValidationIssue = (input: {
   ruleId: string;
   severity: ValidationSeverity;
@@ -37,7 +44,7 @@ export const createValidationIssue = (input: {
 }): ValidationIssue =>
   deepFreeze({
     ruleId: requiredText(input.ruleId, "Validation rule ID"),
-    severity: input.severity,
+    severity: validateSeverity(input.severity),
     message: requiredText(input.message, "Validation message"),
     ...(input.path?.trim() ? { path: input.path.trim() } : {}),
   });
@@ -46,9 +53,13 @@ export const createValidationResult = (input: {
   subjectId: string;
   issues?: readonly ValidationIssue[];
 }): ValidationResult => {
-  const issues = [...(input.issues ?? [])];
+  const subjectId = requiredText(input.subjectId, "Validation subject ID");
+  const issues = [...(input.issues ?? [])].map((issue) =>
+    createValidationIssue(issue),
+  );
+
   return deepFreeze({
-    subjectId: requiredText(input.subjectId, "Validation subject ID"),
+    subjectId,
     valid: !issues.some((issue) => issue.severity === "error"),
     issues,
   });
@@ -57,8 +68,20 @@ export const createValidationResult = (input: {
 export const validateWith = <T extends ValidationSubject>(
   subject: T,
   rules: readonly ValidationRule<T>[],
-): ValidationResult =>
-  createValidationResult({
-    subjectId: subject.id,
-    issues: rules.flatMap((rule) => rule.validate(subject)),
+): ValidationResult => {
+  const issues = rules.flatMap((rule) => {
+    const ruleId = requiredText(rule.id, "Validation rule ID");
+    const produced = rule.validate(subject);
+    return produced.map((issue) =>
+      createValidationIssue({
+        ...issue,
+        ruleId: issue.ruleId || ruleId,
+      }),
+    );
   });
+
+  return createValidationResult({
+    subjectId: subject.id,
+    issues,
+  });
+};
