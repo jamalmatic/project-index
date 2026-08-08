@@ -25,7 +25,7 @@ describe("IngestionService", () => {
         { id: "evidence-1", sourceId: "source-1", assertionId: "assertion-1", excerpt: "dependsOn" },
       ],
       provenance: [
-        { id: "provenance-1", role: "assertion", assertionId: "assertion-1" },
+        { id: "provenance-1", subject: { role: "assertion", assertionId: assertionId("assertion-1") } },
       ],
     });
 
