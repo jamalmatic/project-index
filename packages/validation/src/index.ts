@@ -6,3 +6,4 @@ export * from "./temporal";
 export { validate, validateMany, validateAssertion, validateRelationship, validateEvidence } from "./orchestrator";
 export type { ValidationContext } from "./orchestrator";
 export * from "./writer";
+export * from "./ingestion";
