@@ -40,6 +40,11 @@ export type ValidatedWriteOperation =
   | { readonly kind: "evidence"; readonly input: EvidenceInput };
 
 export type ValidatedWriteResult = Entity | Assertion | Relationship | Evidence;
+type PreparedWrite =
+  | { readonly kind: "entity"; readonly value: Entity }
+  | { readonly kind: "assertion"; readonly value: Assertion }
+  | { readonly kind: "relationship"; readonly value: Relationship }
+  | { readonly kind: "evidence"; readonly value: Evidence };
 
 export class ValidatedWriter {
   private readonly unitOfWork: UnitOfWork;
@@ -83,17 +88,13 @@ export class ValidatedWriter {
   }
 
   async createMany(operations: readonly ValidatedWriteOperation[]): Promise<readonly ValidatedWriteResult[]> {
-    const prepared: ValidatedWriteResult[] = [];
-    const issues = [];
+    const prepared: PreparedWrite[] = [];
+    const issues: ValidationResult["issues"] = [];
 
     for (const operation of operations) {
-      try {
-        const result = await this.prepare(operation);
-        prepared.push(result.value);
-        issues.push(...result.issues);
-      } catch (error) {
-        throw error;
-      }
+      const result = await this.prepare(operation);
+      prepared.push(result.value);
+      issues.push(...result.issues);
     }
 
     if (issues.length) {
@@ -101,52 +102,55 @@ export class ValidatedWriter {
     }
 
     try {
-      for (const value of prepared) {
-        await this.save(value);
+      for (const operation of prepared) {
+        await this.save(operation);
       }
       await this.unitOfWork.commit();
-      return prepared;
+      return prepared.map(({ value }) => value);
     } catch (error) {
       await this.unitOfWork.rollback();
       throw error;
     }
   }
 
-  private async prepare(operation: ValidatedWriteOperation): Promise<{ value: ValidatedWriteResult; issues: ValidationResult["issues"] }> {
+  private async prepare(operation: ValidatedWriteOperation): Promise<{ value: PreparedWrite; issues: ValidationResult["issues"] }> {
     switch (operation.kind) {
       case "entity": {
         const value = createEntity(operation.input);
-        return { value, issues: [] };
+        return { value: { kind: "entity", value }, issues: [] };
       }
       case "assertion": {
         const value = createAssertion(operation.input);
         const result = await validateAssertion(value, this.context);
-        return { value, issues: result.issues };
+        return { value: { kind: "assertion", value }, issues: result.issues };
       }
       case "relationship": {
         const value = createRelationship(operation.input);
         const result = await validateRelationship(value, this.context);
-        return { value, issues: result.issues };
+        return { value: { kind: "relationship", value }, issues: result.issues };
       }
       case "evidence": {
         const value = createEvidence(operation.input);
         const result = await validateEvidence(value, this.context);
-        return { value, issues: result.issues };
+        return { value: { kind: "evidence", value }, issues: result.issues };
       }
     }
   }
 
-  private async save(value: ValidatedWriteResult): Promise<void> {
-    if ("sourceId" in value) {
-      await this.unitOfWork.evidence.save(value);
-    } else if ("predicate" in value) {
-      if ("subject" in value && "object" in value) {
-        await this.unitOfWork.relationships.save(value);
-      } else {
-        await this.unitOfWork.assertions.save(value);
-      }
-    } else {
-      await this.unitOfWork.entities.save(value);
+  private async save(operation: PreparedWrite): Promise<void> {
+    switch (operation.kind) {
+      case "entity":
+        await this.unitOfWork.entities.save(operation.value);
+        return;
+      case "assertion":
+        await this.unitOfWork.assertions.save(operation.value);
+        return;
+      case "relationship":
+        await this.unitOfWork.relationships.save(operation.value);
+        return;
+      case "evidence":
+        await this.unitOfWork.evidence.save(operation.value);
+        return;
     }
   }
 
