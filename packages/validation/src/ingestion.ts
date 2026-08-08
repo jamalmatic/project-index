@@ -1,24 +1,5 @@
-import {
-  createAssertion,
-  createEntity,
-  createRelationship,
-  type Assertion,
-  type AssertionInput,
-  type Entity,
-  type EntityInput,
-  type Relationship,
-  type RelationshipInput,
-} from "@project-index/domain";
-import {
-  createEvidence,
-  createProvenanceRecord,
-  createSource,
-  type Evidence,
-  type EvidenceInput,
-  type ProvenanceRecord,
-  type Source,
-  type SourceInput,
-} from "@project-index/evidence";
+import type { AssertionInput, EntityInput, RelationshipInput } from "@project-index/domain";
+import { createProvenanceRecord, type EvidenceInput, type ProvenanceRecord, type SourceInput } from "@project-index/evidence";
 import type { UnitOfWork } from "@project-index/storage";
 import { ValidatedWriter, type ValidatedWriteOperation } from "./writer";
 
@@ -39,45 +20,38 @@ export interface IngestionInput {
 }
 
 export interface IngestionResult {
-  readonly source: Source;
-  readonly entities: readonly Entity[];
-  readonly assertions: readonly Assertion[];
-  readonly relationships: readonly Relationship[];
-  readonly evidence: readonly Evidence[];
+  readonly source: import("@project-index/evidence").Source;
+  readonly entities: readonly import("@project-index/domain").Entity[];
+  readonly assertions: readonly import("@project-index/domain").Assertion[];
+  readonly relationships: readonly import("@project-index/domain").Relationship[];
+  readonly evidence: readonly import("@project-index/evidence").Evidence[];
   readonly provenance: readonly ProvenanceRecord[];
 }
 
-/**
- * Deterministic ingestion boundary. Construction happens before persistence;
- * validated writes are committed as one unit and rolled back on failure.
- * Provenance is returned as part of the ingestion result and is intentionally
- * not persisted until the provenance repository contract is introduced.
- */
+/** Construct, validate and persist one ingestion batch atomically. */
 export class IngestionService {
   constructor(private readonly unitOfWork: UnitOfWork) {}
 
   async ingest(input: IngestionInput): Promise<IngestionResult> {
-    const source = createSource(input.source);
-    const entities = (input.entities ?? []).map(createEntity);
-    const assertions = (input.assertions ?? []).map(createAssertion);
-    const relationships = (input.relationships ?? []).map(createRelationship);
-    const evidence = (input.evidence ?? []).map(createEvidence);
-    const provenance = (input.provenance ?? []).map(createProvenanceRecord);
-
     const operations: ValidatedWriteOperation[] = [
-      { kind: "entity", input: entities.map((value) => value)[0] ? input.entities![0] : undefined! },
-      ...assertions.map((_, index) => ({ kind: "assertion" as const, input: input.assertions![index] })),
-      ...relationships.map((_, index) => ({ kind: "relationship" as const, input: input.relationships![index] })),
-      ...evidence.map((_, index) => ({ kind: "evidence" as const, input: input.evidence![index] })),
+      { kind: "source", input: input.source },
+      ...(input.entities ?? []).map((value) => ({ kind: "entity" as const, input: value })),
+      ...(input.assertions ?? []).map((value) => ({ kind: "assertion" as const, input: value })),
+      ...(input.relationships ?? []).map((value) => ({ kind: "relationship" as const, input: value })),
+      ...(input.evidence ?? []).map((value) => ({ kind: "evidence" as const, input: value })),
     ];
-
-    if (!input.entities?.length) operations.shift();
 
     const writer = new ValidatedWriter({ unitOfWork: this.unitOfWork });
     await writer.createMany(operations);
-    await this.unitOfWork.sources.save(source);
-    await this.unitOfWork.commit();
+    const provenance = (input.provenance ?? []).map(createProvenanceRecord);
 
-    return { source, entities, assertions, relationships, evidence, provenance };
+    return {
+      source: await this.unitOfWork.sources.getById(input.source.id as import("@project-index/evidence").SourceId) as IngestionResult["source"],
+      entities: await Promise.all((input.entities ?? []).map(async (item) => this.unitOfWork.entities.getById(item.id as import("@project-index/core").EntityId))) as IngestionResult["entities"],
+      assertions: await Promise.all((input.assertions ?? []).map(async (item) => this.unitOfWork.assertions.getById(item.id as import("@project-index/core").AssertionId))) as IngestionResult["assertions"],
+      relationships: await Promise.all((input.relationships ?? []).map(async (item) => this.unitOfWork.relationships.getById(item.id as import("@project-index/core").RelationshipId))) as IngestionResult["relationships"],
+      evidence: await Promise.all((input.evidence ?? []).map(async (item) => this.unitOfWork.evidence.getById(item.id as import("@project-index/evidence").EvidenceId))) as IngestionResult["evidence"],
+      provenance,
+    };
   }
 }
