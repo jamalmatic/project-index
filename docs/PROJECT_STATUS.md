@@ -4,9 +4,10 @@
 
 ## Current state
 
-**Phase 1 — Foundation: COMPLETE**
+**Phase 1 — Foundation: COMPLETE**  
+**Phase 2.1 — Ingestion Contract: IN PROGRESS**
 
-All 12 planned foundation steps are implemented and have passed CI at the end of the phase.
+Phase 1 is locked as the completed foundation baseline. Its 12 steps passed the phase completion gate with CI green. Phase 2.1 is the first capability-layer workstream and is currently at contract/specification stage.
 
 ## Phase 1 — Foundation
 
@@ -24,6 +25,24 @@ All 12 planned foundation steps are implemented and have passed CI at the end of
 | 10 | Persistence layer | Complete | Repository contracts, transactional unit of work, in-memory behavior, and PostgreSQL adapter. |
 | 11 | Basic migrations | Complete | Initial PostgreSQL schema migration for persisted domain records. |
 | 12 | Test infrastructure | Complete | Shared deterministic fixtures and immutable-record test helpers. |
+
+## Phase 2 — Capability Layer
+
+### Step 2.1 — Ingestion Contract — IN PROGRESS
+
+The contract is documented in `docs/02-phase-2/2.1-INGESTION-CONTRACT.md`. Implementation has not yet been declared complete.
+
+The intended flow is:
+
+```text
+normalized input
+  → canonical domain construction
+  → evidence + provenance
+  → validation
+  → atomic persistence
+```
+
+The completion gate requires deterministic canonicalization, evidence/provenance traceability, validation-before-persist, atomic rollback behavior, and an explicit duplicate policy.
 
 ## Implemented package responsibilities
 
@@ -71,7 +90,7 @@ The initial migration persists the canonical domain record in JSONB `data` colum
 
 ## Documentation source of truth
 
-The repository now distinguishes implementation truth from the early design corpus.
+The repository distinguishes implementation truth from the early design corpus.
 
 - `docs/README.md` — documentation hierarchy and authority rules.
 - `docs/00-source-of-truth/DOCUMENTATION_INDEX.md` — organization of the corpus.
@@ -79,15 +98,17 @@ The repository now distinguishes implementation truth from the early design corp
 - `docs/00-source-of-truth/IMPLEMENTATION_MATRIX.md` — design-to-code reconciliation.
 - `docs/00-source-of-truth/RECONCILIATION_NOTES.md` — decisions made while reconciling the corpus.
 - `docs/ROADMAP.md` — approved next-phase sequence.
+- `docs/02-phase-2/2.1-INGESTION-CONTRACT.md` — current Phase 2.1 contract.
 
 Documents 73–84 are treated as the strongest semantic specification set, but their capabilities are not considered implemented unless this status document and the implementation matrix say so.
 
 ## Verification state
 
-The Phase 1 completion gate was achieved with CI green. During implementation, CI/typecheck/lint/test failures were fixed iteratively; the green state is the current acceptance state for the completed foundation.
+Phase 1 completion was accepted with CI green. Phase 2.1 has not yet reached its completion gate.
 
 ## What is deliberately NOT claimed yet
 
+- Phase 2.1 ingestion implementation is not yet complete.
 - Production-grade database migration orchestration beyond the initial migration foundation.
 - A complete public API/application surface.
 - Full inference engine behavior.
@@ -95,6 +116,5 @@ The Phase 1 completion gate was achieved with CI green. During implementation, C
 - Production web UX.
 - Full conflict-resolution workflows.
 - Performance/scaling guarantees.
-- Phase 2 feature commitments that have not yet been explicitly designed and implemented.
 
 These remain future work and must not be described as implemented functionality.
