@@ -43,6 +43,12 @@ type PreparedWrite =
   | { readonly kind: "relationship"; readonly value: Relationship }
   | { readonly kind: "evidence"; readonly value: Evidence };
 
+type StagedReferences = {
+  readonly entityIds: Set<string>;
+  readonly assertionIds: Set<string>;
+  readonly sourceIds: Set<string>;
+};
+
 export class ValidatedWriter {
   private readonly unitOfWork: UnitOfWork;
   private readonly context: ValidationContext;
@@ -84,12 +90,17 @@ export class ValidatedWriter {
   async createMany(operations: readonly ValidatedWriteOperation[]): Promise<readonly ValidatedWriteResult[]> {
     const prepared: PreparedWrite[] = [];
     const issues: ValidationIssue[] = [];
+    const staged: StagedReferences = { entityIds: new Set(), assertionIds: new Set(), sourceIds: new Set() };
     try {
       // Prepare and validate the complete batch before mutating any repository.
+      // Staged IDs make references between members of the same batch resolvable.
       for (const operation of operations) {
-        const result = await this.prepare(operation);
+        const result = await this.prepare(operation, staged);
         if (result.issues.length) issues.push(...result.issues);
-        else prepared.push(result.value);
+        else {
+          prepared.push(result.value);
+          this.stage(result.value, staged);
+        }
       }
 
       if (issues.length) {
@@ -105,7 +116,11 @@ export class ValidatedWriter {
     }
   }
 
-  private async prepare(operation: ValidatedWriteOperation): Promise<{ value: PreparedWrite; issues: readonly ValidationIssue[] }> {
+  private async prepare(
+    operation: ValidatedWriteOperation,
+    staged: StagedReferences,
+  ): Promise<{ value: PreparedWrite; issues: readonly ValidationIssue[] }> {
+    const context: ValidationContext = { ...this.context, staged };
     switch (operation.kind) {
       case "source": return { value: { kind: "source", value: createSource(operation.input) }, issues: [] };
       case "entity": {
@@ -114,19 +129,29 @@ export class ValidatedWriter {
       }
       case "assertion": {
         const value = createAssertion(operation.input);
-        const result = await validateAssertion(value, this.context);
+        const result = await validateAssertion(value, context);
         return { value: { kind: "assertion", value }, issues: result.issues };
       }
       case "relationship": {
         const value = createRelationship(operation.input);
-        const result = await validateRelationship(value, this.context);
+        const result = await validateRelationship(value, context);
         return { value: { kind: "relationship", value }, issues: result.issues };
       }
       case "evidence": {
         const value = createEvidence(operation.input);
-        const result = await validateEvidence(value, this.context);
+        const result = await validateEvidence(value, context);
         return { value: { kind: "evidence", value }, issues: result.issues };
       }
+    }
+  }
+
+  private stage(operation: PreparedWrite, staged: StagedReferences): void {
+    switch (operation.kind) {
+      case "source": staged.sourceIds.add(operation.value.id); break;
+      case "entity": staged.entityIds.add(operation.value.id); break;
+      case "assertion": staged.assertionIds.add(operation.value.id); break;
+      case "relationship": break;
+      case "evidence": break;
     }
   }
 
