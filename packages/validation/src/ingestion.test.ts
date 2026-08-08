@@ -1,3 +1,5 @@
+import { assertionId } from "@project-index/core";
+import { sourceId } from "@project-index/evidence";
 import { describe, expect, it } from "vitest";
 import { createMemoryUnitOfWork } from "@project-index/storage";
 import { IngestionService, ValidationError } from "./index";
@@ -48,7 +50,7 @@ describe("IngestionService", () => {
       ],
     })).rejects.toBeInstanceOf(ValidationError);
 
-    expect(await unitOfWork.sources.getById("source-2" as never)).toBeNull();
-    expect(await unitOfWork.assertions.getById("assertion-2" as never)).toBeNull();
+    expect(await unitOfWork.sources.getById(sourceId("source-2"))).toBeNull();
+    expect(await unitOfWork.assertions.getById(assertionId("assertion-2"))).toBeNull();
   });
 });
