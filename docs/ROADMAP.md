@@ -1,6 +1,17 @@
 # Project Index — Roadmap
 
-This roadmap is intentionally conservative. A phase becomes "complete" only when its planned contracts are implemented, documented, tested, and accepted by CI.
+This roadmap is intentionally conservative. A phase becomes **complete** only when its planned contracts are implemented, documented, tested, and accepted by CI.
+
+## Documentation gate before Phase 2
+
+The original architecture/specification corpus contains 84 Markdown documents. It has now been inventoried and reconciled against the Phase 1 implementation.
+
+- `docs/00-source-of-truth/DOCUMENTATION_INDEX.md` defines the authority hierarchy and corpus areas.
+- `docs/00-source-of-truth/CORPUS_MANIFEST.md` inventories all 84 documents.
+- `docs/00-source-of-truth/IMPLEMENTATION_MATRIX.md` separates implemented contracts from future design.
+- `docs/00-source-of-truth/RECONCILIATION_NOTES.md` records the important semantic discrepancies and preservation policy.
+
+The corpus is design/reference material unless the implementation matrix marks a capability as implemented.
 
 ## Phase 1 — Foundation — COMPLETE
 
@@ -21,41 +32,123 @@ See [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) for the exact implementation stat
 
 ## Phase 2 — Capability Layer — NEXT
 
-Phase 2 should turn the foundation into coherent, externally useful capabilities without destabilizing the Phase 1 contracts.
+Phase 2 turns the stable foundation into the first coherent, externally useful knowledge capabilities. The sequence is derived from the 84-document corpus, but no design document is treated as implemented merely because it exists.
 
-### Proposed workstreams
+### Step 2.1 — Ingestion contract
 
-1. **Knowledge ingestion**
-   - input normalization;
-   - source/evidence capture;
-   - creation of canonical entities/assertions/relationships;
-   - provenance attachment.
+Grounded primarily in Documents 16, 18, 23, 33, 34 and 38.
 
-2. **Inference and derivation**
-   - explicit derivation execution;
-   - rule registration/execution contracts;
-   - derived assertions;
-   - derivation provenance.
+Deliver:
 
-3. **Validation pipelines**
-   - reusable validation profiles;
-   - validation reporting;
-   - validation-before-persist workflows;
-   - conflict/consistency handling.
+- normalized ingestion input contract;
+- source and evidence capture;
+- canonical entity/assertion/relationship creation;
+- provenance attachment;
+- deterministic ingestion result;
+- unit tests and persistence contract tests.
 
-4. **Query/read capabilities**
-   - entity lookup;
-   - assertion/relationship traversal;
-   - evidence/provenance retrieval;
-   - temporal filtering.
+Acceptance gate: an input can be transformed into canonical domain objects with evidence/provenance and persisted atomically.
 
-5. **Application/API surface**
-   - stable service/application contracts;
-   - API endpoints only after the underlying capability contracts are settled.
+### Step 2.2 — Discovery primitives
 
-### Phase 2 rule
+Grounded primarily in Documents 19, 33–38 and 78.
 
-The list above is a planning boundary, not a claim that these capabilities already exist. Before implementing a Phase 2 step, define its contract, acceptance tests, dependency direction, and persistence implications.
+Deliver:
+
+- resource discovery abstraction;
+- deterministic path/resource normalization;
+- discovery evidence records;
+- detection-rule contract;
+- rule execution result model;
+- discovery pipeline orchestration.
+
+Acceptance gate: discovery is deterministic, read-only with respect to the inspected project, and produces explicit evidence rather than silently mutating knowledge.
+
+### Step 2.3 — Rule and analyzer contracts
+
+Grounded primarily in Documents 35–43 and 79.
+
+Deliver:
+
+- rule definition contract;
+- analyzer contract;
+- plugin boundary;
+- registration and capability metadata;
+- deterministic execution semantics.
+
+Acceptance gate: a rule/analyzer can be registered, executed, tested, and produce structured evidence without coupling the domain model to a specific parser implementation.
+
+### Step 2.4 — Derivation and inference
+
+Grounded primarily in Documents 39, 42, 83 and the Phase 1 provenance/derivation model.
+
+Deliver:
+
+- explicit derivation execution contract;
+- rule/activity identity;
+- derived assertion creation;
+- input/evidence lineage;
+- provenance persistence;
+- deterministic derivation tests.
+
+Acceptance gate: every derived assertion has an inspectable derivation chain back to its inputs/evidence.
+
+### Step 2.5 — Validation profiles and conflict handling
+
+Grounded primarily in Document 84 and the existing validation package.
+
+Deliver:
+
+- named validation profiles;
+- composable validation rules;
+- conflict/consistency classification;
+- validation reporting;
+- validation-before-persist orchestration.
+
+Acceptance gate: validation is reusable, deterministic, and never silently converts an unresolved conflict into a fact.
+
+### Step 2.6 — Query/read contract
+
+Grounded primarily in Documents 52, 56, 57, 63 and the existing persistence layer.
+
+Deliver:
+
+- canonical read/query interfaces;
+- entity lookup;
+- assertion/relationship traversal;
+- evidence/provenance retrieval;
+- temporal filtering where supported by the current model.
+
+Acceptance gate: read APIs expose immutable domain data without leaking persistence implementation details.
+
+### Step 2.7 — Application composition layer
+
+Grounded primarily in Documents 7, 18, 42, 47 and 55.
+
+Deliver:
+
+- application service boundaries;
+- dependency injection/composition root;
+- stable API/application contracts;
+- error mapping;
+- integration tests.
+
+Acceptance gate: consumers can use the capability layer without importing internal persistence or validation implementation details.
+
+## Explicitly deferred beyond Phase 2
+
+The corpus describes a much larger ecosystem. The following are intentionally deferred until the capability layer proves its contracts:
+
+- full snapshot publication/registry;
+- Rust and WASM APIs;
+- PIQL;
+- language-server integration;
+- AI-agent integration;
+- documentation/build-system integrations;
+- plugin registry and compatibility negotiation service;
+- enterprise deployment profiles;
+- governance/certification/conformance program;
+- production-scale caching and distributed scheduling.
 
 ## Phase 3 — Product/Application Layer — FUTURE
 
