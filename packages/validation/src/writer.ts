@@ -84,14 +84,19 @@ export class ValidatedWriter {
   async createMany(operations: readonly ValidatedWriteOperation[]): Promise<readonly ValidatedWriteResult[]> {
     const prepared: PreparedWrite[] = [];
     const issues: ValidationIssue[] = [];
-    for (const operation of operations) {
-      const result = await this.prepare(operation);
-      prepared.push(result.value);
-      issues.push(...result.issues);
-    }
-    if (issues.length) throw new ValidationError(createValidationResult({ subjectId: "validation:batch", issues }));
     try {
-      for (const operation of prepared) await this.save(operation);
+      for (const operation of operations) {
+        const result = await this.prepare(operation);
+        if (result.issues.length) issues.push(...result.issues);
+        else {
+          prepared.push(result.value);
+          await this.save(result.value);
+        }
+      }
+      if (issues.length) {
+        await this.unitOfWork.rollback();
+        throw new ValidationError(createValidationResult({ subjectId: "validation:batch", issues }));
+      }
       await this.unitOfWork.commit();
       return prepared.map(({ value }) => value);
     } catch (error) {
