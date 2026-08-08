@@ -85,18 +85,18 @@ export class ValidatedWriter {
     const prepared: PreparedWrite[] = [];
     const issues: ValidationIssue[] = [];
     try {
+      // Prepare and validate the complete batch before mutating any repository.
       for (const operation of operations) {
         const result = await this.prepare(operation);
         if (result.issues.length) issues.push(...result.issues);
-        else {
-          prepared.push(result.value);
-          await this.save(result.value);
-        }
+        else prepared.push(result.value);
       }
+
       if (issues.length) {
-        await this.unitOfWork.rollback();
         throw new ValidationError(createValidationResult({ subjectId: "validation:batch", issues }));
       }
+
+      for (const value of prepared) await this.save(value);
       await this.unitOfWork.commit();
       return prepared.map(({ value }) => value);
     } catch (error) {
