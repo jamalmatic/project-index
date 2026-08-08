@@ -9,14 +9,13 @@ import {
   type Relationship,
   type RelationshipInput,
 } from "@project-index/domain";
-import { createEvidence, type Evidence, type EvidenceInput } from "@project-index/evidence";
+import { createEvidence, createSource, type Evidence, type EvidenceInput, type Source, type SourceInput } from "@project-index/evidence";
 import type { UnitOfWork } from "@project-index/storage";
 import { createValidationResult, type ValidationIssue, type ValidationResult } from "./model";
 import { validateAssertion, validateEvidence, validateRelationship, type ValidationContext } from "./orchestrator";
 
 export class ValidationError extends Error {
   readonly result: ValidationResult;
-
   constructor(result: ValidationResult) {
     super(`Validation failed with ${result.issues.length} issue(s)`);
     this.name = "ValidationError";
@@ -30,13 +29,15 @@ export interface ValidatedWriterOptions {
 }
 
 export type ValidatedWriteOperation =
+  | { readonly kind: "source"; readonly input: SourceInput }
   | { readonly kind: "entity"; readonly input: EntityInput }
   | { readonly kind: "assertion"; readonly input: AssertionInput }
   | { readonly kind: "relationship"; readonly input: RelationshipInput }
   | { readonly kind: "evidence"; readonly input: EvidenceInput };
 
-export type ValidatedWriteResult = Entity | Assertion | Relationship | Evidence;
+export type ValidatedWriteResult = Source | Entity | Assertion | Relationship | Evidence;
 type PreparedWrite =
+  | { readonly kind: "source"; readonly value: Source }
   | { readonly kind: "entity"; readonly value: Entity }
   | { readonly kind: "assertion"; readonly value: Assertion }
   | { readonly kind: "relationship"; readonly value: Relationship }
@@ -83,15 +84,12 @@ export class ValidatedWriter {
   async createMany(operations: readonly ValidatedWriteOperation[]): Promise<readonly ValidatedWriteResult[]> {
     const prepared: PreparedWrite[] = [];
     const issues: ValidationIssue[] = [];
-
     for (const operation of operations) {
       const result = await this.prepare(operation);
       prepared.push(result.value);
       issues.push(...result.issues);
     }
-
     if (issues.length) throw new ValidationError(createValidationResult({ subjectId: "validation:batch", issues }));
-
     try {
       for (const operation of prepared) await this.save(operation);
       await this.unitOfWork.commit();
@@ -104,6 +102,7 @@ export class ValidatedWriter {
 
   private async prepare(operation: ValidatedWriteOperation): Promise<{ value: PreparedWrite; issues: readonly ValidationIssue[] }> {
     switch (operation.kind) {
+      case "source": return { value: { kind: "source", value: createSource(operation.input) }, issues: [] };
       case "entity": {
         const value = createEntity(operation.input);
         return { value: { kind: "entity", value }, issues: [] };
@@ -128,6 +127,7 @@ export class ValidatedWriter {
 
   private async save(operation: PreparedWrite): Promise<void> {
     switch (operation.kind) {
+      case "source": return this.unitOfWork.sources.save(operation.value);
       case "entity": return this.unitOfWork.entities.save(operation.value);
       case "assertion": return this.unitOfWork.assertions.save(operation.value);
       case "relationship": return this.unitOfWork.relationships.save(operation.value);
