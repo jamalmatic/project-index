@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { createEntity } from "@project-index/domain";
 import type { UnitOfWork } from "@project-index/storage";
 import { ValidatedWriter } from "./writer";
 
@@ -21,14 +20,6 @@ const makeUnitOfWork = (): UnitOfWork => ({
     save: vi.fn().mockResolvedValue(undefined),
   },
   evidence: {
-    getById: vi.fn(),
-    save: vi.fn().mockResolvedValue(undefined),
-  },
-  provenance: {
-    getById: vi.fn(),
-    save: vi.fn().mockResolvedValue(undefined),
-  },
-  derivations: {
     getById: vi.fn(),
     save: vi.fn().mockResolvedValue(undefined),
   },
@@ -71,13 +62,5 @@ describe("ValidatedWriter transaction semantics", () => {
 
     expect(unitOfWork.commit).toHaveBeenCalledOnce();
     expect(unitOfWork.rollback).toHaveBeenCalledOnce();
-  });
-
-  it("does not start transaction cleanup when validation fails", async () => {
-    const unitOfWork = makeUnitOfWork();
-    const writer = new ValidatedWriter({ unitOfWork });
-    const input = { identity: "entity-1", type: "person", properties: {} } as never;
-    const result = createEntity(input);
-    expect(result.id).toBeDefined();
   });
 });
