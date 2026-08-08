@@ -1,5 +1,6 @@
 import type { AssertionInput, EntityInput, RelationshipInput } from "@project-index/domain";
-import { createProvenanceRecord, type EvidenceInput, type ProvenanceRecord, type SourceInput } from "@project-index/evidence";
+import { createProvenanceRecord, type EvidenceInput, type ProvenanceRecord, type SourceInput, type Source } from "@project-index/evidence";
+import type { Assertion, Entity, Relationship } from "@project-index/domain";
 import type { UnitOfWork } from "@project-index/storage";
 import { ValidatedWriter, type ValidatedWriteOperation } from "./writer";
 
@@ -20,10 +21,10 @@ export interface IngestionInput {
 }
 
 export interface IngestionResult {
-  readonly source: import("@project-index/evidence").Source;
-  readonly entities: readonly import("@project-index/domain").Entity[];
-  readonly assertions: readonly import("@project-index/domain").Assertion[];
-  readonly relationships: readonly import("@project-index/domain").Relationship[];
+  readonly source: Source;
+  readonly entities: readonly Entity[];
+  readonly assertions: readonly Assertion[];
+  readonly relationships: readonly Relationship[];
   readonly evidence: readonly import("@project-index/evidence").Evidence[];
   readonly provenance: readonly ProvenanceRecord[];
 }
@@ -42,16 +43,17 @@ export class IngestionService {
     ];
 
     const writer = new ValidatedWriter({ unitOfWork: this.unitOfWork });
-    await writer.createMany(operations);
+    const values = await writer.createMany(operations);
+    const entityCount = input.entities?.length ?? 0;
+    const assertionCount = input.assertions?.length ?? 0;
+    const relationshipCount = input.relationships?.length ?? 0;
+    const source = values[0] as Source;
+    const entities = values.slice(1, 1 + entityCount) as Entity[];
+    const assertions = values.slice(1 + entityCount, 1 + entityCount + assertionCount) as Assertion[];
+    const relationships = values.slice(1 + entityCount + assertionCount, 1 + entityCount + assertionCount + relationshipCount) as Relationship[];
+    const evidence = values.slice(1 + entityCount + assertionCount + relationshipCount) as IngestionResult["evidence"];
     const provenance = (input.provenance ?? []).map(createProvenanceRecord);
 
-    return {
-      source: await this.unitOfWork.sources.getById(input.source.id as import("@project-index/evidence").SourceId) as IngestionResult["source"],
-      entities: await Promise.all((input.entities ?? []).map(async (item) => this.unitOfWork.entities.getById(item.id as import("@project-index/core").EntityId))) as IngestionResult["entities"],
-      assertions: await Promise.all((input.assertions ?? []).map(async (item) => this.unitOfWork.assertions.getById(item.id as import("@project-index/core").AssertionId))) as IngestionResult["assertions"],
-      relationships: await Promise.all((input.relationships ?? []).map(async (item) => this.unitOfWork.relationships.getById(item.id as import("@project-index/core").RelationshipId))) as IngestionResult["relationships"],
-      evidence: await Promise.all((input.evidence ?? []).map(async (item) => this.unitOfWork.evidence.getById(item.id as import("@project-index/evidence").EvidenceId))) as IngestionResult["evidence"],
-      provenance,
-    };
+    return { source, entities, assertions, relationships, evidence, provenance };
   }
 }
