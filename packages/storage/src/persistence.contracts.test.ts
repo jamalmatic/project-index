@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { createEntity } from "@project-index/domain";
+import { entityId } from "@project-index/core";
 import { createMemoryUnitOfWork } from "./memory";
 import type { UnitOfWork } from "./repository";
 
 const exerciseUnitOfWork = async (create: () => Promise<UnitOfWork> | UnitOfWork) => {
   const unit = await create();
-  const entity = { id: "entity-1", identity: "example", type: "concept", properties: {} } as never;
+  const entity = createEntity({ id: "entity-1", type: "concept" });
   await unit.entities.save(entity);
   expect(await unit.entities.getById(entity.id)).toBe(entity);
   await unit.commit();
@@ -30,7 +32,7 @@ describe("persistence contract", () => {
 
   it("returns null for an unknown identifier", async () => {
     const unit = createMemoryUnitOfWork();
-    expect(await unit.entities.getById("missing" as never)).toBeNull();
+    expect(await unit.entities.getById(entityId("missing"))).toBeNull();
     await unit.rollback();
   });
 });
