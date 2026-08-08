@@ -69,6 +69,19 @@ Persistence is behind repository and `UnitOfWork` contracts. The in-memory imple
 
 The initial migration persists the canonical domain record in JSONB `data` columns with stable text primary keys and operational timestamps. Reference-oriented indexes are present for common assertion, relationship, and evidence lookups.
 
+## Documentation source of truth
+
+The repository now distinguishes implementation truth from the early design corpus.
+
+- `docs/README.md` — documentation hierarchy and authority rules.
+- `docs/00-source-of-truth/DOCUMENTATION_INDEX.md` — organization of the corpus.
+- `docs/00-source-of-truth/CORPUS_MANIFEST.md` — inventory of all 84 original documents.
+- `docs/00-source-of-truth/IMPLEMENTATION_MATRIX.md` — design-to-code reconciliation.
+- `docs/00-source-of-truth/RECONCILIATION_NOTES.md` — decisions made while reconciling the corpus.
+- `docs/ROADMAP.md` — approved next-phase sequence.
+
+Documents 73–84 are treated as the strongest semantic specification set, but their capabilities are not considered implemented unless this status document and the implementation matrix say so.
+
 ## Verification state
 
 The Phase 1 completion gate was achieved with CI green. During implementation, CI/typecheck/lint/test failures were fixed iteratively; the green state is the current acceptance state for the completed foundation.
