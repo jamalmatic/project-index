@@ -16,8 +16,11 @@ export interface NormalizedDiscovery {
 
 /**
  * Converts discovery observations into canonical ingestion inputs.
- * This boundary deliberately does not persist anything and does not invent
- * domain objects from observations whose semantics are not yet defined.
+ *
+ * This boundary does not invent domain semantics. A matched observation is
+ * converted to evidence only when it explicitly identifies an assertion or
+ * entity. Otherwise it remains a discovery-layer observation and requires a
+ * domain-specific adapter before ingestion.
  */
 export const normalizeDiscovery = (
   observations: readonly DiscoveryObservation[],
@@ -31,22 +34,26 @@ export const normalizeDiscovery = (
   for (const observation of observations) {
     if (observation.status !== "matched") continue;
 
-    // Detection observations become evidence at this boundary. Canonical
-    // entities/assertions/relationships require a domain-specific adapter;
-    // normalization must not guess those semantics.
+    const properties = observation.properties;
+    const assertionId = typeof properties.assertionId === "string" ? properties.assertionId.trim() : "";
+    const entityId = typeof properties.entityId === "string" ? properties.entityId.trim() : "";
+
+    if (!assertionId && !entityId) continue;
+
     evidence.push({
       id: `evidence:${observation.id}`,
       sourceId: context.sourceId,
-      assertionId: undefined,
+      ...(assertionId ? { assertionId } : {}),
+      ...(entityId ? { entityId } : {}),
       properties: {
         discoveryObservationId: observation.id,
         discoveryRuleId: observation.ruleId,
         discoveryRuleVersion: observation.ruleVersion,
-        kind: observation.kind,
-        value: observation.value,
-        ...observation.properties,
+        ...(observation.kind ? { kind: observation.kind } : {}),
+        ...(observation.value !== undefined ? { value: observation.value } : {}),
+        ...properties,
       },
-    } as EvidenceInput);
+    });
   }
 
   return deepFreeze({ entities, assertions, relationships, evidence });
