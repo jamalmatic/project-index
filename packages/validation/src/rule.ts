@@ -13,7 +13,7 @@ export interface RuleDefinition {
 }
 
 export interface RuleContract extends RuleDefinition {
-  readonly execute(context: DetectionRuleContext): Promise<DetectionRuleResult>;
+  execute(context: DetectionRuleContext): Promise<DetectionRuleResult>;
 }
 
 export interface RuleInput {
@@ -32,7 +32,7 @@ const requiredText = (value: string, name: string): string => {
 };
 
 export const createRuleDefinition = (input: Omit<RuleInput, "execute">): RuleDefinition => {
-  const capabilities = [...(input.capabilities ?? ["detection"])] as RuleCapability[];
+  const capabilities = [...(input.capabilities ?? ["detection"])];
   if (capabilities.length === 0) throw new Error("Rule must declare at least one capability");
   if (new Set(capabilities).size !== capabilities.length) throw new Error("Rule capabilities must be unique");
 
