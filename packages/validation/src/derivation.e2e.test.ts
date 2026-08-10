@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAssertion } from "@project-index/domain";
 import { assertionId, entityId } from "@project-index/core";
-import { persistDerivation } from "./derivation-persistence";
 import type { UnitOfWork } from "@project-index/storage";
+import { persistDerivation } from "./derivation-persistence";
 
 const inputAssertion = createAssertion({
   id: assertionId("assertion-input"),
@@ -17,14 +17,20 @@ const unitOfWork = (): UnitOfWork & {
     derivations: Map<string, unknown>;
     provenance: Map<string, unknown>;
   };
+  provenanceSave: ReturnType<typeof vi.fn>;
 } => {
   const state = {
     assertions: new Map<string, unknown>(),
     derivations: new Map<string, unknown>(),
     provenance: new Map<string, unknown>(),
   };
+  const provenanceSave = vi.fn(async (value: Parameters<UnitOfWork["provenance"]["save"]>[0]): Promise<void> => {
+    state.provenance.set("provenance", value);
+  });
+
   return {
     state,
+    provenanceSave,
     entities: { getById: vi.fn(), save: vi.fn(async () => undefined) },
     assertions: {
       getById: vi.fn(),
@@ -43,9 +49,7 @@ const unitOfWork = (): UnitOfWork & {
     },
     provenance: {
       getById: vi.fn(),
-      save: vi.fn(async (value: unknown): Promise<void> => {
-        state.provenance.set("provenance", value);
-      }),
+      save: provenanceSave,
     },
     commit: vi.fn(async () => undefined),
     rollback: vi.fn(async () => undefined),
@@ -121,7 +125,7 @@ describe("Phase 2.4 derivation end-to-end", () => {
 
   it("rolls back when lineage persistence fails", async () => {
     const unit = unitOfWork();
-    unit.provenance.save.mockRejectedValueOnce(new Error("provenance failure"));
+    unit.provenanceSave.mockRejectedValueOnce(new Error("provenance failure"));
 
     await expect(
       persistDerivation({
