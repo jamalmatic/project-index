@@ -16,7 +16,7 @@ export interface DerivationResult {
 export interface DerivationRule {
   readonly id: string;
   readonly version: string;
-  readonly derive(context: DerivationContext): Promise<DerivationResult>;
+  derive(context: DerivationContext): Promise<DerivationResult>;
 }
 
 export interface DerivationExecutionInput {
@@ -46,16 +46,18 @@ export const executeDerivation = async (
     evidenceIds,
   });
   const assertion = createAssertion(result.assertion);
-  const derivation = createDerivation({
-    id: input.derivationId,
-    outputAssertionId: assertion.id,
-    inputAssertionIds: input.inputAssertions.map((candidate) => candidate.id),
-    evidenceIds: result.evidenceIds ?? evidenceIds,
-    ruleId: `${input.rule.id}@${input.rule.version}`,
-    ...(input.activityId ? { activityId: input.activityId } : {}),
-    ...(input.recordedAt ? { recordedAt: input.recordedAt } : {}),
-    properties: result.properties,
-  });
+  const derivationInput = {
+  id: input.derivationId,
+  outputAssertionId: assertion.id,
+  inputAssertionIds: input.inputAssertions.map((candidate) => candidate.id),
+  evidenceIds: result.evidenceIds ?? evidenceIds,
+  ruleId: `${input.rule.id}@${input.rule.version}`,
+  ...(input.activityId ? { activityId: input.activityId } : {}),
+  ...(input.recordedAt ? { recordedAt: input.recordedAt } : {}),
+  ...(result.properties ? { properties: result.properties } : {}),
+};
+
+const derivation = createDerivation(derivationInput);
 
   return deepFreeze({ assertion, derivation });
 };
