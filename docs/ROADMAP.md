@@ -70,21 +70,23 @@ Delivered:
 
 Acceptance gate: **passed**. Discovery is deterministic, read-only with respect to the inspected project, explicitly represents detection failures, preserves rule/version provenance, and feeds Phase 2.1 without bypassing validation or persistence boundaries. See `docs/02-phase-2/2.2-DISCOVERY-PRIMITIVES.md` for the locked contract.
 
-### Step 2.3 — Rule and analyzer contracts — NEXT
+### Step 2.3 — Rule and analyzer contracts — COMPLETE / LOCKED
 
 Grounded primarily in Documents 35–43 and 79.
 
-Deliver:
+Delivered:
 
 - rule definition contract;
 - analyzer contract;
-- plugin boundary;
-- registration and capability metadata;
-- deterministic execution semantics.
+- common plugin boundary;
+- in-process registration and capability discovery;
+- deterministic analyzer orchestration;
+- analyzer failure isolation;
+- deterministic observations, failures, and batch ordering.
 
-Acceptance gate: a rule/analyzer can be registered, executed, tested, and produce structured evidence without coupling the domain model to a specific parser implementation.
+Acceptance gate: **passed**. Rules/analyzers can be defined, registered, selected by capability, executed, tested, and produce structured analysis values without coupling the domain model to a specific parser implementation. See `docs/02-phase-2/2.3-RULE-AND-ANALYZER-CONTRACTS.md` for the locked contract and explicit non-goals.
 
-### Step 2.4 — Derivation and inference
+### Step 2.4 — Derivation and inference — NEXT
 
 Grounded primarily in Documents 39, 42, 83 and the Phase 1 provenance/derivation model.
 
@@ -151,10 +153,12 @@ The corpus describes a much larger ecosystem. The following are intentionally de
 - language-server integration;
 - AI-agent integration;
 - documentation/build-system integrations;
-- plugin registry and compatibility negotiation service;
+- plugin compatibility negotiation service;
 - enterprise deployment profiles;
 - governance/certification/conformance program;
 - production-scale caching and distributed scheduling.
+
+The Phase 2.3 registry is deliberately an **in-process capability registry**, not the deferred production plugin registry/service.
 
 ## Phase 3 — Product/Application Layer — FUTURE
 
