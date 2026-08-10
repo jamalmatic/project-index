@@ -17,3 +17,4 @@ export * from "./analyzer";
 export * from "./plugin";
 export * from "./registry";
 export * from "./orchestration";
+export * from "./derivation";
