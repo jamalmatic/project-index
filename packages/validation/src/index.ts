@@ -18,3 +18,4 @@ export * from "./plugin";
 export * from "./registry";
 export * from "./orchestration";
 export * from "./derivation";
+export * from "./derivation-persistence";
