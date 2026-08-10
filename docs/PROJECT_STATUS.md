@@ -6,9 +6,9 @@
 
 **Phase 1 — Foundation: COMPLETE / LOCKED**  
 **Phase 2.1 — Ingestion Contract: COMPLETE / LOCKED**  
-**Next: Phase 2.2 — Discovery Primitives**
+**Phase 2.2 — Discovery Primitives: IN PROGRESS**
 
-Phase 1 is locked as the completed foundation baseline. Its 12 steps passed the phase completion gate with CI green. Phase 2.1 is now also locked after implementation, regression testing, and CI acceptance.
+Phase 1 is locked as the completed foundation baseline. Phase 2.1 is locked after implementation, regression testing, and CI acceptance. Phase 2.2 is the current active capability-layer workstream.
 
 ## Phase 1 — Foundation
 
@@ -47,11 +47,31 @@ normalized input
 
 The implementation guarantees that a multi-object batch is validated before repository mutation, references may resolve against objects staged earlier in the same batch, validation failure performs no commit, and persistence failure rolls the unit of work back. The ingestion result preserves constructed provenance metadata.
 
-Phase 2.1 intentionally does not claim independent provenance persistence because the current `UnitOfWork` persistence contract has no provenance repository. That capability remains future work and must be introduced explicitly rather than implied by the ingestion API.
+Phase 2.1 intentionally does not claim independent provenance persistence because the current `UnitOfWork` persistence contract has no provenance repository.
 
-### Step 2.2 — Discovery Primitives — NEXT
+### Step 2.2 — Discovery Primitives — IN PROGRESS
 
-Discovery is the next active capability-layer workstream. It will define resource discovery, deterministic resource normalization, discovery evidence, detection-rule contracts, rule results, and discovery orchestration without coupling the domain to a specific parser or filesystem implementation.
+The contract is documented in `docs/02-phase-2/2.2-DISCOVERY-PRIMITIVES.md`.
+
+Implemented so far:
+
+- canonical discovery resource IDs;
+- immutable resource records;
+- explicit resource kinds;
+- immutable discovery evidence records;
+- provider abstraction;
+- deterministic URI ordering;
+- unit tests for these primitives.
+
+Remaining acceptance work:
+
+- detection-rule contract;
+- structured rule execution results;
+- discovery orchestration that feeds Phase 2.1;
+- read-only integration tests proving discovery does not mutate knowledge persistence;
+- CI acceptance and phase lock.
+
+Discovery evidence intentionally remains distinct from domain `Evidence` until a discovery finding has a canonical entity/assertion target. This avoids falsely representing an observed file/resource as domain knowledge.
 
 ## Implemented package responsibilities
 
@@ -66,7 +86,7 @@ packages/
   ontology/    Entity/relationship constraints
   evidence/    Source, evidence, provenance and derivation models
   inference/  Derivation/inference capabilities
-  validation/ Validation contracts, rules, orchestration and validated writes
+  validation/ Validation contracts, rules, orchestration, validated writes and discovery primitives
   storage/    Repository/unit-of-work contracts, memory and PostgreSQL persistence
   testing/    Shared test fixtures and assertions
 ```
@@ -75,7 +95,7 @@ packages/
 
 ### Immutability
 
-Domain records and validation/provenance records are constructed as immutable values. Builders/factories normalize input and return deeply frozen records where the model requires it.
+Domain records and validation/provenance/discovery records are constructed as immutable values. Builders/factories normalize input and return deeply frozen records where the model requires it.
 
 ### Branded identity
 
@@ -93,13 +113,13 @@ Validation is modeled as a domain capability rather than an ad-hoc collection of
 
 Persistence is behind repository and `UnitOfWork` contracts. The in-memory implementation is the reference behavioral implementation for transaction semantics; PostgreSQL is the database adapter.
 
-### PostgreSQL representation
-
-The initial migration persists the canonical domain record in JSONB `data` columns with stable text primary keys and operational timestamps. Reference-oriented indexes are present for common assertion, relationship, and evidence lookups.
-
 ### Ingestion atomicity
 
 The validated writer treats multi-object ingestion as a transaction boundary. All operations are prepared and validated before any repository save. Same-batch references resolve against staged objects, and only a fully valid batch reaches persistence and a single commit.
+
+### Discovery read-only boundary
+
+Discovery observes resources and produces immutable observations. It does not persist discovered resources or mutate the inspected project. Domain knowledge creation remains the responsibility of the Phase 2.1 ingestion boundary.
 
 ## Documentation source of truth
 
@@ -112,16 +132,18 @@ The repository distinguishes implementation truth from the early design corpus.
 - `docs/00-source-of-truth/RECONCILIATION_NOTES.md` — decisions made while reconciling the corpus.
 - `docs/ROADMAP.md` — approved next-phase sequence.
 - `docs/02-phase-2/2.1-INGESTION-CONTRACT.md` — locked Phase 2.1 contract.
+- `docs/02-phase-2/2.2-DISCOVERY-PRIMITIVES.md` — active Phase 2.2 contract.
 
 Documents 73–84 are treated as the strongest semantic specification set, but their capabilities are not considered implemented unless this status document and the implementation matrix say so.
 
 ## Verification state
 
-Phase 1 completion was accepted with CI green. Phase 2.1 implementation, regression tests, and CI are green and the step is locked. Phase 2.2 has not yet been implemented.
+Phase 1 completion was accepted with CI green. Phase 2.1 implementation, regression tests, and CI are green and the step is locked. Phase 2.2 primitives have been implemented and tested locally; final CI acceptance is still pending.
 
 ## What is deliberately NOT claimed yet
 
-- Phase 2.2 discovery primitives.
+- Phase 2.2 completion.
+- Detection-rule and analyzer contracts.
 - Independent provenance persistence through `UnitOfWork`.
 - Production-grade database migration orchestration beyond the initial migration foundation.
 - A complete public API/application surface.
