@@ -6,9 +6,10 @@
 
 **Phase 1 — Foundation: COMPLETE / LOCKED**  
 **Phase 2.1 — Ingestion Contract: COMPLETE / LOCKED**  
-**Phase 2.2 — Discovery Primitives: IN PROGRESS**
+**Phase 2.2 — Discovery Primitives: COMPLETE / LOCKED**  
+**Next: Phase 2.3 — Rule and Analyzer Contracts**
 
-Phase 1 is locked as the completed foundation baseline. Phase 2.1 is locked after implementation, regression testing, and CI acceptance. Phase 2.2 is the current active capability-layer workstream.
+Phase 1 is the completed foundation baseline. Phase 2.1 and Phase 2.2 are locked after implementation, regression testing, and CI acceptance.
 
 ## Phase 1 — Foundation
 
@@ -49,29 +50,61 @@ The implementation guarantees that a multi-object batch is validated before repo
 
 Phase 2.1 intentionally does not claim independent provenance persistence because the current `UnitOfWork` persistence contract has no provenance repository.
 
-### Step 2.2 — Discovery Primitives — IN PROGRESS
+### Step 2.2 — Discovery Primitives — COMPLETE / LOCKED
 
-The contract is documented in `docs/02-phase-2/2.2-DISCOVERY-PRIMITIVES.md`.
+The implementation is in `packages/validation/src/discovery.ts`, `detection.ts`, `observation.ts`, `runner.ts`, and `normalization.ts`.
 
-Implemented so far:
+Implemented and accepted:
 
 - canonical discovery resource IDs;
-- immutable resource records;
-- explicit resource kinds;
-- immutable discovery evidence records;
-- provider abstraction;
-- deterministic URI ordering;
-- unit tests for these primitives.
+- immutable resource records and explicit resource kinds;
+- discovery provider abstraction and deterministic resource ordering;
+- versioned detection-rule contract;
+- structured detection matches and failures;
+- deterministic rule execution and failure isolation;
+- immutable discovery observations with matched/unmatched/failed status;
+- discovery runner and deterministic batch ordering;
+- discovery → ingestion normalization boundary;
+- normalization tests and end-to-end discovery → ingestion integration tests.
 
-Remaining acceptance work:
+The implemented flow is:
 
-- detection-rule contract;
-- structured rule execution results;
-- discovery orchestration that feeds Phase 2.1;
-- read-only integration tests proving discovery does not mutate knowledge persistence;
-- CI acceptance and phase lock.
+```text
+DiscoveryResource
+  → DetectionRule(s)
+  → DetectionMatch / DetectionFailure
+  → DiscoveryObservation
+  → normalization
+  → Phase 2.1 ingestion
+  → validation / writer
+  → persistence
+```
 
-Discovery evidence intentionally remains distinct from domain `Evidence` until a discovery finding has a canonical entity/assertion target. This avoids falsely representing an observed file/resource as domain knowledge.
+### Step 2.2 architectural guarantees
+
+1. **Discovery is read-only with respect to the inspected project.** Discovery produces values; it does not mutate the project being inspected.
+2. **Detection failures are explicit.** A throwing rule becomes a structured failed observation rather than aborting unrelated rule execution.
+3. **Results are deterministic.** Rules, observations, matches, failures, and batch resources have stable ordering semantics.
+4. **Rule provenance is retained.** Observations retain the detection rule identity and version.
+5. **Normalization is conservative.** Generic discovery does not invent canonical entities, assertions, or relationships.
+6. **Ingestion remains the persistence boundary.** Discovery cannot bypass Phase 2.1 validation and atomic persistence.
+7. **Evidence semantics are respected.** A generic discovery observation is not forced into domain `Evidence` unless it has a valid canonical assertion/entity target under the existing evidence contract.
+8. **Strict TypeScript remains authoritative.** Optional properties are omitted rather than explicitly assigned `undefined` under `exactOptionalPropertyTypes`.
+
+### Step 2.2 non-goals
+
+Phase 2.2 does not claim:
+
+- parser-specific analyzers;
+- a plugin registry;
+- canonical domain semantics for arbitrary discovery matches;
+- independent provenance persistence;
+- production-grade scheduling or distributed discovery;
+- complete rule/analyzer lifecycle management.
+
+### Phase 2.2 acceptance
+
+**COMPLETE / LOCKED.** Typecheck, test suite, and CI acceptance are green. The discovery contract is frozen as the baseline for Phase 2.3. Future changes that alter these boundaries require an explicit source-of-truth update and, where architectural, an ADR.
 
 ## Implemented package responsibilities
 
@@ -86,7 +119,8 @@ packages/
   ontology/    Entity/relationship constraints
   evidence/    Source, evidence, provenance and derivation models
   inference/  Derivation/inference capabilities
-  validation/ Validation contracts, rules, orchestration, validated writes and discovery primitives
+  validation  Validation contracts, rules, orchestration, validated writes,
+              discovery, detection, observations, runners and normalization
   storage/    Repository/unit-of-work contracts, memory and PostgreSQL persistence
   testing/    Shared test fixtures and assertions
 ```
@@ -132,18 +166,18 @@ The repository distinguishes implementation truth from the early design corpus.
 - `docs/00-source-of-truth/RECONCILIATION_NOTES.md` — decisions made while reconciling the corpus.
 - `docs/ROADMAP.md` — approved next-phase sequence.
 - `docs/02-phase-2/2.1-INGESTION-CONTRACT.md` — locked Phase 2.1 contract.
-- `docs/02-phase-2/2.2-DISCOVERY-PRIMITIVES.md` — active Phase 2.2 contract.
+- `docs/02-phase-2/2.2-DISCOVERY-PRIMITIVES.md` — locked Phase 2.2 contract.
 
 Documents 73–84 are treated as the strongest semantic specification set, but their capabilities are not considered implemented unless this status document and the implementation matrix say so.
 
 ## Verification state
 
-Phase 1 completion was accepted with CI green. Phase 2.1 implementation, regression tests, and CI are green and the step is locked. Phase 2.2 primitives have been implemented and tested locally; final CI acceptance is still pending.
+Phase 1 completion was accepted with CI green. Phase 2.1 implementation, regression tests, and CI are green and the step is locked. Phase 2.2 implementation, regression tests, integration tests, typecheck, and CI are green and the step is locked.
 
 ## What is deliberately NOT claimed yet
 
-- Phase 2.2 completion.
-- Detection-rule and analyzer contracts.
+- Phase 2.3 completion.
+- A complete rule/analyzer plugin lifecycle.
 - Independent provenance persistence through `UnitOfWork`.
 - Production-grade database migration orchestration beyond the initial migration foundation.
 - A complete public API/application surface.
@@ -152,5 +186,3 @@ Phase 1 completion was accepted with CI green. Phase 2.1 implementation, regress
 - Production web UX.
 - Full conflict-resolution workflows.
 - Performance/scaling guarantees.
-
-These remain future work and must not be described as implemented functionality.
