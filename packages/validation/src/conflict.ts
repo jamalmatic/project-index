@@ -1,4 +1,4 @@
-import type { ValidationIssue, ValidationSeverity, ValidationSubject } from "./model";
+import type { ValidationIssue, ValidationSubject } from "./model";
 import { deepFreeze } from "@project-index/core";
 
 export type ValidationConflictKind = "error" | "warning";
@@ -53,14 +53,11 @@ export const detectValidationConflicts = (
   subject: ValidationSubject,
   issues: readonly ValidationIssue[],
 ): readonly ValidationConflict[] => {
-  const bySubject = new Map<string, ValidationIssue[]>();
   const relevant = issues.filter((issue) => issue.severity === "error" || issue.severity === "warning");
-  bySubject.set(subject.id, [...relevant]);
-  const subjectIssues = bySubject.get(subject.id) ?? [];
-  if (subjectIssues.length < 2) return [];
+  if (relevant.length < 2) return [];
 
-  const ruleIds = new Set(subjectIssues.map((issue) => issue.ruleId));
+  const ruleIds = new Set(relevant.map((issue) => issue.ruleId));
   if (ruleIds.size < 2) return [];
 
-  return [createValidationConflict({ subjectId: subject.id, issues: subjectIssues })];
+  return [createValidationConflict({ subjectId: subject.id, issues: relevant })];
 };
