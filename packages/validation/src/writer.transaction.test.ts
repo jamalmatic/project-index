@@ -8,6 +8,8 @@ const makeUnitOfWork = (): UnitOfWork => ({
   relationships: { getById: vi.fn(), save: vi.fn().mockResolvedValue(undefined) },
   sources: { getById: vi.fn(), save: vi.fn().mockResolvedValue(undefined) },
   evidence: { getById: vi.fn(), save: vi.fn().mockResolvedValue(undefined) },
+  derivations: { getById: vi.fn(), save: vi.fn().mockResolvedValue(undefined) },
+  provenance: { getById: vi.fn(), save: vi.fn().mockResolvedValue(undefined) },
   commit: vi.fn().mockResolvedValue(undefined),
   rollback: vi.fn().mockResolvedValue(undefined),
 });
@@ -18,9 +20,7 @@ describe("ValidatedWriter transaction semantics", () => {
   it("commits exactly once after a successful write", async () => {
     const unitOfWork = makeUnitOfWork();
     const writer = new ValidatedWriter({ unitOfWork });
-
     await writer.createEntity(validEntityInput);
-
     expect(unitOfWork.entities.save).toHaveBeenCalledOnce();
     expect(unitOfWork.commit).toHaveBeenCalledOnce();
     expect(unitOfWork.rollback).not.toHaveBeenCalled();
@@ -30,7 +30,6 @@ describe("ValidatedWriter transaction semantics", () => {
     const unitOfWork = makeUnitOfWork();
     vi.mocked(unitOfWork.entities.save).mockRejectedValueOnce(new Error("save failed"));
     const writer = new ValidatedWriter({ unitOfWork });
-
     await expect(writer.createEntity(validEntityInput)).rejects.toThrow("save failed");
     expect(unitOfWork.commit).not.toHaveBeenCalled();
     expect(unitOfWork.rollback).toHaveBeenCalledOnce();
@@ -40,7 +39,6 @@ describe("ValidatedWriter transaction semantics", () => {
     const unitOfWork = makeUnitOfWork();
     vi.mocked(unitOfWork.commit).mockRejectedValueOnce(new Error("commit failed"));
     const writer = new ValidatedWriter({ unitOfWork });
-
     await expect(writer.createEntity(validEntityInput)).rejects.toThrow("commit failed");
     expect(unitOfWork.commit).toHaveBeenCalledOnce();
     expect(unitOfWork.rollback).toHaveBeenCalledOnce();
