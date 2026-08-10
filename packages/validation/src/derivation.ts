@@ -47,17 +47,16 @@ export const executeDerivation = async (
   });
   const assertion = createAssertion(result.assertion);
   const derivationInput = {
-  id: input.derivationId,
-  outputAssertionId: assertion.id,
-  inputAssertionIds: input.inputAssertions.map((candidate) => candidate.id),
-  evidenceIds: result.evidenceIds ?? evidenceIds,
-  ruleId: `${input.rule.id}@${input.rule.version}`,
-  ...(input.activityId ? { activityId: input.activityId } : {}),
-  ...(input.recordedAt ? { recordedAt: input.recordedAt } : {}),
-  ...(result.properties ? { properties: result.properties } : {}),
-};
+    id: input.derivationId,
+    outputAssertionId: assertion.id,
+    inputAssertionIds: input.inputAssertions.map((candidate) => candidate.id),
+    evidenceIds: result.evidenceIds ?? evidenceIds,
+    ruleId: `${input.rule.id}@${input.rule.version}`,
+    ...(input.activityId ? { activityId: input.activityId } : {}),
+    ...(input.recordedAt ? { recordedAt: input.recordedAt } : {}),
+    ...(result.properties ? { properties: result.properties } : {}),
+  };
 
-const derivation = createDerivation(derivationInput);
-
+  const derivation = createDerivation(derivationInput);
   return deepFreeze({ assertion, derivation });
 };
