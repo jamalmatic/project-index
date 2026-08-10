@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createValidationProfile, composeValidationProfiles } from "./profile";
 import type { ValidationRule } from "./model";
+import type { Assertion } from "@project-index/domain";
 
-type Subject = { id: string };
-
-const rule = (id: string): ValidationRule<Subject> => ({
+const rule = (id: string): ValidationRule<Assertion> => ({
   id,
   validate: () => [],
 });
