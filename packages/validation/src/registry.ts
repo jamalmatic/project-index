@@ -4,17 +4,15 @@ import type { PluginContract, PluginId, PluginKind } from "./plugin";
 import type { RuleCapability, RuleContract } from "./rule";
 
 export type RegistryEntry = PluginContract;
-export type Capability = RuleCapability | AnalyzerCapability | string;
+export type Capability = RuleCapability | AnalyzerCapability;
 
 export interface PluginRegistry {
-  readonly register(plugin: PluginContract): void;
-  readonly get(id: PluginId): PluginContract | undefined;
-  readonly list(): readonly PluginContract[];
-  readonly findByKind(kind: PluginKind): readonly PluginContract[];
-  readonly findByCapability(capability: Capability): readonly PluginContract[];
+  register(plugin: PluginContract): void;
+  get(id: PluginId): PluginContract | undefined;
+  list(): readonly PluginContract[];
+  findByKind(kind: PluginKind): readonly PluginContract[];
+  findByCapability(capability: Capability): readonly PluginContract[];
 }
-
-const sameId = (left: PluginContract, right: PluginContract): boolean => left.id === right.id;
 
 export const createPluginRegistry = (initialPlugins: readonly PluginContract[] = []): PluginRegistry => {
   const plugins = new Map<PluginId, PluginContract>();
