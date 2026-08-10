@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createAssertion } from "@project-index/domain";
 import { assertionId, entityId } from "@project-index/core";
 import { persistDerivation } from "./derivation-persistence";
+import type { UnitOfWork } from "@project-index/storage";
 
 const inputAssertion = createAssertion({
   id: assertionId("assertion-input"),
@@ -10,7 +11,13 @@ const inputAssertion = createAssertion({
   object: "person",
 });
 
-const unitOfWork = () => {
+const unitOfWork = (): UnitOfWork & {
+  state: {
+    assertions: Map<string, unknown>;
+    derivations: Map<string, unknown>;
+    provenance: Map<string, unknown>;
+  };
+} => {
   const state = {
     assertions: new Map<string, unknown>(),
     derivations: new Map<string, unknown>(),
@@ -18,21 +25,27 @@ const unitOfWork = () => {
   };
   return {
     state,
-    entities: { getById: vi.fn(), save: vi.fn() },
+    entities: { getById: vi.fn(), save: vi.fn(async () => undefined) },
     assertions: {
       getById: vi.fn(),
-      save: vi.fn(async (value: unknown) => state.assertions.set("output", value)),
+      save: vi.fn(async (value: unknown): Promise<void> => {
+        state.assertions.set("output", value);
+      }),
     },
-    relationships: { getById: vi.fn(), save: vi.fn() },
-    sources: { getById: vi.fn(), save: vi.fn() },
-    evidence: { getById: vi.fn(), save: vi.fn() },
+    relationships: { getById: vi.fn(), save: vi.fn(async () => undefined) },
+    sources: { getById: vi.fn(), save: vi.fn(async () => undefined) },
+    evidence: { getById: vi.fn(), save: vi.fn(async () => undefined) },
     derivations: {
       getById: vi.fn(),
-      save: vi.fn(async (value: unknown) => state.derivations.set("derivation", value)),
+      save: vi.fn(async (value: unknown): Promise<void> => {
+        state.derivations.set("derivation", value);
+      }),
     },
     provenance: {
       getById: vi.fn(),
-      save: vi.fn(async (value: unknown) => state.provenance.set("provenance", value)),
+      save: vi.fn(async (value: unknown): Promise<void> => {
+        state.provenance.set("provenance", value);
+      }),
     },
     commit: vi.fn(async () => undefined),
     rollback: vi.fn(async () => undefined),
@@ -51,10 +64,12 @@ describe("Phase 2.4 derivation end-to-end", () => {
           id: "rule.person",
           version: "1.0.0",
           async derive({ inputAssertions }) {
+            const source = inputAssertions[0];
+            if (!source) throw new Error("Missing input assertion");
             return {
               assertion: {
                 id: assertionId("assertion-output"),
-                subject: inputAssertions[0].subject,
+                subject: source.subject,
                 predicate: "isA",
                 object: "human",
               },
@@ -82,10 +97,12 @@ describe("Phase 2.4 derivation end-to-end", () => {
         id: "rule.person",
         version: "1.0.0",
         async derive({ inputAssertions }) {
+          const source = inputAssertions[0];
+          if (!source) throw new Error("Missing input assertion");
           return {
             assertion: {
               id: assertionId("assertion-output-2"),
-              subject: inputAssertions[0].subject,
+              subject: source.subject,
               predicate: "isA",
               object: "human",
             },
@@ -115,10 +132,12 @@ describe("Phase 2.4 derivation end-to-end", () => {
           id: "rule.person",
           version: "1.0.0",
           async derive({ inputAssertions }) {
+            const source = inputAssertions[0];
+            if (!source) throw new Error("Missing input assertion");
             return {
               assertion: {
                 id: assertionId("assertion-output-3"),
-                subject: inputAssertions[0].subject,
+                subject: source.subject,
                 predicate: "isA",
                 object: "human",
               },
