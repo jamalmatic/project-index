@@ -15,3 +15,4 @@ export * from "./normalization";
 export * from "./rule";
 export * from "./analyzer";
 export * from "./plugin";
+export * from "./registry";
