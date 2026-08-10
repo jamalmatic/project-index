@@ -52,22 +52,25 @@ Delivered:
 
 Acceptance gate: **passed**. The implementation and CI are green. See `docs/02-phase-2/2.1-INGESTION-CONTRACT.md` for the locked contract and explicit non-goals.
 
-### Step 2.2 — Discovery primitives — NEXT
+### Step 2.2 — Discovery primitives — COMPLETE / LOCKED
 
 Grounded primarily in Documents 19, 33–38 and 78.
 
-Deliver:
+Delivered:
 
 - resource discovery abstraction;
-- deterministic path/resource normalization;
-- discovery evidence records;
-- detection-rule contract;
-- rule execution result model;
-- discovery pipeline orchestration.
+- deterministic resource normalization and ordering;
+- discovery provider boundary;
+- versioned detection-rule contract;
+- structured matches and failures;
+- immutable discovery observations;
+- deterministic discovery orchestration;
+- conservative discovery → ingestion normalization boundary;
+- unit, contract, transaction, and end-to-end integration tests.
 
-Acceptance gate: discovery is deterministic, read-only with respect to the inspected project, and produces explicit evidence rather than silently mutating knowledge.
+Acceptance gate: **passed**. Discovery is deterministic, read-only with respect to the inspected project, explicitly represents detection failures, preserves rule/version provenance, and feeds Phase 2.1 without bypassing validation or persistence boundaries. See `docs/02-phase-2/2.2-DISCOVERY-PRIMITIVES.md` for the locked contract.
 
-### Step 2.3 — Rule and analyzer contracts
+### Step 2.3 — Rule and analyzer contracts — NEXT
 
 Grounded primarily in Documents 35–43 and 79.
 
