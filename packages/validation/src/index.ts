@@ -12,3 +12,4 @@ export * from "./detection";
 export * from "./observation";
 export * from "./runner";
 export * from "./normalization";
+export * from "./rule";
