@@ -11,3 +11,4 @@ export * from "./discovery";
 export * from "./detection";
 export * from "./observation";
 export * from "./runner";
+export * from "./normalization";
