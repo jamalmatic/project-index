@@ -1,5 +1,4 @@
 import { deepFreeze } from "@project-index/core";
-import { evidenceId, sourceId, createEvidence, type Evidence } from "@project-index/evidence";
 
 export type DiscoveryResourceId = string & { readonly __brand: "DiscoveryResourceId" };
 
@@ -12,23 +11,40 @@ const requiredText = (value: string, name: string): string => {
 export const discoveryResourceId = (value: string): DiscoveryResourceId =>
   requiredText(value, "Discovery resource ID") as DiscoveryResourceId;
 
+export type DiscoveryResourceKind = "file" | "directory" | "url" | "other";
+
 export interface DiscoveryResource {
   readonly id: DiscoveryResourceId;
   readonly uri: string;
-  readonly kind: "file" | "directory" | "url" | "other";
+  readonly kind: DiscoveryResourceKind;
 }
 
 export interface DiscoveryInput {
   readonly id: string | DiscoveryResourceId;
   readonly uri: string;
-  readonly kind: DiscoveryResource["kind"];
+  readonly kind: DiscoveryResourceKind;
+}
+
+/**
+ * Discovery evidence is intentionally a discovery-layer record rather than a
+ * domain Evidence object. The current Evidence model requires an assertion or
+ * entity target; discovery resources do not become domain entities merely by
+ * being observed. Conversion to domain Evidence happens when a discovery
+ * finding produces a canonical knowledge object.
+ */
+export interface DiscoveryEvidence {
+  readonly id: string;
+  readonly resourceId: DiscoveryResourceId;
   readonly sourceId?: string;
+  readonly path?: string;
+  readonly excerpt?: string;
+  readonly properties: Readonly<Record<string, unknown>>;
 }
 
 export interface DiscoveryEvidenceInput {
   readonly id: string;
-  readonly sourceId: string;
   readonly resourceId: string | DiscoveryResourceId;
+  readonly sourceId?: string;
   readonly path?: string;
   readonly excerpt?: string;
   readonly properties?: Readonly<Record<string, unknown>>;
@@ -36,7 +52,7 @@ export interface DiscoveryEvidenceInput {
 
 export interface DiscoveryResult {
   readonly resource: DiscoveryResource;
-  readonly evidence: Evidence;
+  readonly evidence: DiscoveryEvidence;
 }
 
 export const createDiscoveryResource = (input: DiscoveryInput): DiscoveryResource =>
@@ -46,18 +62,14 @@ export const createDiscoveryResource = (input: DiscoveryInput): DiscoveryResourc
     kind: input.kind,
   });
 
-export const createDiscoveryEvidence = (input: DiscoveryEvidenceInput): Evidence =>
-  createEvidence({
-    id: evidenceId(input.id),
-    sourceId: sourceId(input.sourceId),
-    entityId: discoveryResourceId(input.resourceId) as never,
-    ...(input.path || input.excerpt || input.properties
-      ? {
-          locator: input.path ? { path: requiredText(input.path, "Discovery evidence path") } : undefined,
-          excerpt: input.excerpt,
-          properties: input.properties,
-        }
-      : {}),
+export const createDiscoveryEvidence = (input: DiscoveryEvidenceInput): DiscoveryEvidence =>
+  deepFreeze({
+    id: requiredText(input.id, "Discovery evidence ID"),
+    resourceId: discoveryResourceId(input.resourceId),
+    properties: { ...(input.properties ?? {}) },
+    ...(input.sourceId?.trim() ? { sourceId: input.sourceId.trim() } : {}),
+    ...(input.path?.trim() ? { path: input.path.trim() } : {}),
+    ...(input.excerpt?.trim() ? { excerpt: input.excerpt.trim() } : {}),
   });
 
 export interface DiscoveryProvider {
