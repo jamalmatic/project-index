@@ -9,3 +9,4 @@ export * from "./writer";
 export * from "./ingestion";
 export * from "./discovery";
 export * from "./detection";
+export * from "./observation";
