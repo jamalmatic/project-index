@@ -2,23 +2,23 @@ import type { UnitOfWork } from "@project-index/storage";
 import type { ValidationSubject } from "./model";
 import type { ValidationProfile } from "./profile";
 import type { ConflictResolutionPolicy } from "./conflict-resolution";
-import type { ConflictDecisionRepository } from "./conflict-decision-store";
+import type { TransactionalConflictDecisionRepository } from "./conflict-decision-transaction";
 import {
   validateProfileAndPersistConflictDecisions,
-  type ProfileConflictTransactionResult,
+  type PersistedProfileValidationResult,
 } from "./profile-conflict-transaction";
 
 export interface PublicValidationOptions<T extends ValidationSubject> {
   readonly profile: ValidationProfile<T>;
   readonly conflictPolicy: ConflictResolutionPolicy;
-  readonly conflictDecisions: ConflictDecisionRepository;
+  readonly conflictDecisions: TransactionalConflictDecisionRepository;
 }
 
 export const validateAndPersist = async <T extends ValidationSubject>(
   subject: T,
   unitOfWork: UnitOfWork,
   options: PublicValidationOptions<T>,
-): Promise<ProfileConflictTransactionResult> =>
+): Promise<PersistedProfileValidationResult> =>
   validateProfileAndPersistConflictDecisions(
     subject,
     options.profile,
