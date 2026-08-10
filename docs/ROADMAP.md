@@ -86,22 +86,25 @@ Delivered:
 
 Acceptance gate: **passed**. Rules/analyzers can be defined, registered, selected by capability, executed, tested, and produce structured analysis values without coupling the domain model to a specific parser implementation. See `docs/02-phase-2/2.3-RULE-AND-ANALYZER-CONTRACTS.md` for the locked contract and explicit non-goals.
 
-### Step 2.4 — Derivation and inference — NEXT
+### Step 2.4 — Derivation and inference — COMPLETE / LOCKED
 
 Grounded primarily in Documents 39, 42, 83 and the Phase 1 provenance/derivation model.
 
-Deliver:
+Delivered:
 
 - explicit derivation execution contract;
-- rule/activity identity;
-- derived assertion creation;
+- stable rule identity and version;
+- derived assertion creation through the ordinary domain assertion model;
 - input/evidence lineage;
-- provenance persistence;
-- deterministic derivation tests.
+- derivation and provenance repository ports;
+- in-memory and PostgreSQL persistence support;
+- atomic assertion + derivation + provenance persistence through `UnitOfWork`;
+- rollback on lineage persistence or commit failure;
+- deterministic end-to-end derivation tests.
 
-Acceptance gate: every derived assertion has an inspectable derivation chain back to its inputs/evidence.
+Acceptance gate: **passed**. Every successful derived assertion has an inspectable derivation/provenance chain back to its input assertions/evidence, and the complete lineage is committed atomically. See `docs/02-phase-2/2.4-DERIVATION-AND-INFERENCE.md` for the locked contract and explicit non-goals.
 
-### Step 2.5 — Validation profiles and conflict handling
+### Step 2.5 — Validation profiles and conflict handling — NEXT
 
 Grounded primarily in Document 84 and the existing validation package.
 
