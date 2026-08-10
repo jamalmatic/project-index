@@ -8,7 +8,7 @@ describe("plugin registration and capability discovery", () => {
     id: "syntax-analyzer",
     version: "1.0.0",
     name: "Syntax Analyzer",
-    capabilities: ["syntax", "typescript"],
+    capabilities: ["syntax"],
     analyze: async () => ({ observations: [], failures: [] }),
   });
 
@@ -17,7 +17,7 @@ describe("plugin registration and capability discovery", () => {
     version: "1.0.0",
     name: "Syntax Plugin",
     kind: "analyzer",
-    capabilities: ["syntax", "typescript"],
+    capabilities: ["syntax"],
     implementation: analyzer,
   });
 
@@ -36,7 +36,7 @@ describe("plugin registration and capability discovery", () => {
     expect(registry.findByKind("analyzer")).toEqual([plugin]);
     expect(registry.findByKind("rule")).toEqual([]);
     expect(registry.findByCapability("syntax")).toEqual([plugin]);
-    expect(registry.findByCapability("missing")).toEqual([]);
+    expect(registry.findByCapability("metadata")).toEqual([]);
   });
 
   it("builds a deterministic capability index and exposes analyzers", () => {
@@ -45,7 +45,6 @@ describe("plugin registration and capability discovery", () => {
     expect(buildCapabilityIndex(manifest.plugins)).toEqual({
       capabilities: {
         syntax: [plugin.id],
-        typescript: [plugin.id],
       },
     });
     expect(getAnalyzers(manifest.plugins)).toEqual([analyzer]);
