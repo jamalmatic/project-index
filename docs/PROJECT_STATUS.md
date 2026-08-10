@@ -7,9 +7,10 @@
 **Phase 1 — Foundation: COMPLETE / LOCKED**  
 **Phase 2.1 — Ingestion Contract: COMPLETE / LOCKED**  
 **Phase 2.2 — Discovery Primitives: COMPLETE / LOCKED**  
-**Next: Phase 2.3 — Rule and Analyzer Contracts**
+**Phase 2.3 — Rule and Analyzer Contracts: COMPLETE / LOCKED**  
+**Next: Phase 2.4 — Derivation and Inference**
 
-Phase 1 is the completed foundation baseline. Phase 2.1 and Phase 2.2 are locked after implementation, regression testing, and CI acceptance.
+Phase 1 is the completed foundation baseline. Phase 2.1, 2.2, and 2.3 are locked after implementation, regression testing, and CI acceptance.
 
 ## Phase 1 — Foundation
 
@@ -67,44 +68,59 @@ Implemented and accepted:
 - discovery → ingestion normalization boundary;
 - normalization tests and end-to-end discovery → ingestion integration tests.
 
+### Step 2.3 — Rule and Analyzer Contracts — COMPLETE / LOCKED
+
+The locked contract is documented in `docs/02-phase-2/2.3-RULE-AND-ANALYZER-CONTRACTS.md`.
+
+Implemented in `packages/validation/src/`:
+
+- `rule.ts` — stable rule identity/version/capability contract;
+- `analyzer.ts` — stable analyzer identity/version/capability contract and failure-isolated execution;
+- `plugin.ts` — common rule/analyzer plugin boundary;
+- `registry.ts` — in-process registration, lookup, kind/capability discovery, manifest and capability index;
+- `orchestration.ts` — deterministic analyzer selection and execution.
+
 The implemented flow is:
 
 ```text
 DiscoveryResource
-  → DetectionRule(s)
-  → DetectionMatch / DetectionFailure
-  → DiscoveryObservation
-  → normalization
-  → Phase 2.1 ingestion
-  → validation / writer
-  → persistence
+  → DetectionMatch
+  → PluginRegistry
+  → capability selection
+  → AnalyzerContract(s)
+  → deterministic orchestration
+  → AnalysisObservation / AnalyzerFailure
 ```
 
-### Step 2.2 architectural guarantees
+Phase 2.3 keeps analysis independent from persistence. Plugin loading, lifecycle management, compatibility negotiation, distributed scheduling, and production plugin services are explicitly not claimed.
 
-1. **Discovery is read-only with respect to the inspected project.** Discovery produces values; it does not mutate the project being inspected.
-2. **Detection failures are explicit.** A throwing rule becomes a structured failed observation rather than aborting unrelated rule execution.
-3. **Results are deterministic.** Rules, observations, matches, failures, and batch resources have stable ordering semantics.
-4. **Rule provenance is retained.** Observations retain the detection rule identity and version.
-5. **Normalization is conservative.** Generic discovery does not invent canonical entities, assertions, or relationships.
-6. **Ingestion remains the persistence boundary.** Discovery cannot bypass Phase 2.1 validation and atomic persistence.
-7. **Evidence semantics are respected.** A generic discovery observation is not forced into domain `Evidence` unless it has a valid canonical assertion/entity target under the existing evidence contract.
-8. **Strict TypeScript remains authoritative.** Optional properties are omitted rather than explicitly assigned `undefined` under `exactOptionalPropertyTypes`.
+### Phase 2.3 architectural guarantees
 
-### Step 2.2 non-goals
+1. **Stable capability identity.** Rules, analyzers, and plugins have explicit identity and version metadata.
+2. **Typed capabilities.** Analyzer capabilities are explicit and constrained to the supported analyzer contract.
+3. **Kind safety.** A plugin's declared kind must match its executable implementation.
+4. **Duplicate protection.** Registry and registration manifests reject duplicate plugin identities.
+5. **Capability discovery.** Consumers can select registered plugins by kind or capability.
+6. **Failure isolation.** Analyzer exceptions become structured failures and do not abort unrelated analyzers.
+7. **Deterministic execution.** Analyzer selection, observations, failures, and batches have stable ordering semantics.
+8. **Persistence separation.** Orchestration produces analysis values and does not bypass the ingestion/persistence boundary.
+9. **Immutability.** Contract records and returned orchestration values are frozen where required by the model.
 
-Phase 2.2 does not claim:
+### Phase 2.3 non-goals
+
+Phase 2.3 does not claim:
 
 - parser-specific analyzers;
-- a plugin registry;
-- canonical domain semantics for arbitrary discovery matches;
-- independent provenance persistence;
-- production-grade scheduling or distributed discovery;
-- complete rule/analyzer lifecycle management.
+- dynamic filesystem/package plugin loading;
+- complete plugin lifecycle management;
+- compatibility negotiation between plugin versions;
+- distributed scheduling;
+- persistence of analysis observations;
+- a production plugin marketplace/service.
 
-### Phase 2.2 acceptance
+### Phase 2.3 acceptance
 
-**COMPLETE / LOCKED.** Typecheck, test suite, and CI acceptance are green. The discovery contract is frozen as the baseline for Phase 2.3. Future changes that alter these boundaries require an explicit source-of-truth update and, where architectural, an ADR.
+**COMPLETE / LOCKED.** Typecheck, test suite, and CI acceptance are green. The Rule/Analyzer/Plugin/Registry/Orchestration boundaries are frozen as the baseline for Phase 2.4. Future changes that alter these boundaries require an explicit source-of-truth update and, where architectural, an ADR.
 
 ## Implemented package responsibilities
 
@@ -120,7 +136,8 @@ packages/
   evidence/    Source, evidence, provenance and derivation models
   inference/  Derivation/inference capabilities
   validation  Validation contracts, rules, orchestration, validated writes,
-              discovery, detection, observations, runners and normalization
+              discovery, detection, observations, runners, normalization,
+              rule/analyzer/plugin contracts, registry and deterministic analysis
   storage/    Repository/unit-of-work contracts, memory and PostgreSQL persistence
   testing/    Shared test fixtures and assertions
 ```
@@ -155,6 +172,10 @@ The validated writer treats multi-object ingestion as a transaction boundary. Al
 
 Discovery observes resources and produces immutable observations. It does not persist discovered resources or mutate the inspected project. Domain knowledge creation remains the responsibility of the Phase 2.1 ingestion boundary.
 
+### Capability execution boundary
+
+Phase 2.3 separates capability declaration from execution. Plugins expose metadata and implementations; the registry handles in-process discovery; orchestration executes analyzers and returns immutable analysis values. Persistence remains outside this boundary.
+
 ## Documentation source of truth
 
 The repository distinguishes implementation truth from the early design corpus.
@@ -167,18 +188,19 @@ The repository distinguishes implementation truth from the early design corpus.
 - `docs/ROADMAP.md` — approved next-phase sequence.
 - `docs/02-phase-2/2.1-INGESTION-CONTRACT.md` — locked Phase 2.1 contract.
 - `docs/02-phase-2/2.2-DISCOVERY-PRIMITIVES.md` — locked Phase 2.2 contract.
+- `docs/02-phase-2/2.3-RULE-AND-ANALYZER-CONTRACTS.md` — locked Phase 2.3 contract.
 
 Documents 73–84 are treated as the strongest semantic specification set, but their capabilities are not considered implemented unless this status document and the implementation matrix say so.
 
 ## Verification state
 
-Phase 1 completion was accepted with CI green. Phase 2.1 implementation, regression tests, and CI are green and the step is locked. Phase 2.2 implementation, regression tests, integration tests, typecheck, and CI are green and the step is locked.
+Phase 1 completion was accepted with CI green. Phase 2.1 implementation, regression tests, and CI are green and the step is locked. Phase 2.2 implementation, regression tests, integration tests, typecheck, and CI are green and the step is locked. Phase 2.3 implementation, regression tests, typecheck, and CI are green and the step is locked.
 
 ## What is deliberately NOT claimed yet
 
-- Phase 2.3 completion.
-- A complete rule/analyzer plugin lifecycle.
+- Phase 2.4 completion.
 - Independent provenance persistence through `UnitOfWork`.
+- Production-grade plugin loading/lifecycle/compatibility negotiation.
 - Production-grade database migration orchestration beyond the initial migration foundation.
 - A complete public API/application surface.
 - Full inference engine behavior.
