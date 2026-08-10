@@ -8,9 +8,10 @@
 **Phase 2.1 — Ingestion Contract: COMPLETE / LOCKED**  
 **Phase 2.2 — Discovery Primitives: COMPLETE / LOCKED**  
 **Phase 2.3 — Rule and Analyzer Contracts: COMPLETE / LOCKED**  
-**Next: Phase 2.4 — Derivation and Inference**
+**Phase 2.4 — Derivation and Inference: COMPLETE / LOCKED**  
+**Next: Phase 2.5 — Validation Profiles and Conflict Handling**
 
-Phase 1 is the completed foundation baseline. Phase 2.1, 2.2, and 2.3 are locked after implementation, regression testing, and CI acceptance.
+Phase 1 is the completed foundation baseline. Phase 2.1, 2.2, 2.3, and 2.4 are locked after implementation, regression testing, deterministic end-to-end testing, typecheck, and CI acceptance.
 
 ## Phase 1 — Foundation
 
@@ -47,10 +48,6 @@ normalized input
   → single commit
 ```
 
-The implementation guarantees that a multi-object batch is validated before repository mutation, references may resolve against objects staged earlier in the same batch, validation failure performs no commit, and persistence failure rolls the unit of work back. The ingestion result preserves constructed provenance metadata.
-
-Phase 2.1 intentionally does not claim independent provenance persistence because the current `UnitOfWork` persistence contract has no provenance repository.
-
 ### Step 2.2 — Discovery Primitives — COMPLETE / LOCKED
 
 The implementation is in `packages/validation/src/discovery.ts`, `detection.ts`, `observation.ts`, `runner.ts`, and `normalization.ts`.
@@ -80,47 +77,36 @@ Implemented in `packages/validation/src/`:
 - `registry.ts` — in-process registration, lookup, kind/capability discovery, manifest and capability index;
 - `orchestration.ts` — deterministic analyzer selection and execution.
 
+### Step 2.4 — Derivation and Inference — COMPLETE / LOCKED
+
+The locked contract is documented in `docs/02-phase-2/2.4-DERIVATION-AND-INFERENCE.md`.
+
+Implemented and accepted:
+
+- explicit derivation rule execution contract;
+- stable rule identity and version metadata;
+- derived assertion creation through the ordinary domain assertion model;
+- derivation records with output/input/evidence lineage;
+- provenance construction for derived assertions;
+- derivation and provenance repository ports in `UnitOfWork`;
+- in-memory and PostgreSQL repository support;
+- atomic assertion + derivation + provenance persistence;
+- rollback on lineage persistence or commit failure;
+- deterministic end-to-end derivation tests.
+
 The implemented flow is:
 
 ```text
-DiscoveryResource
-  → DetectionMatch
-  → PluginRegistry
-  → capability selection
-  → AnalyzerContract(s)
-  → deterministic orchestration
-  → AnalysisObservation / AnalyzerFailure
+input assertions + evidence
+  → derivation rule
+  → derived assertion
+  → derivation record
+  → provenance record
+  → UnitOfWork
+  → single commit
 ```
 
-Phase 2.3 keeps analysis independent from persistence. Plugin loading, lifecycle management, compatibility negotiation, distributed scheduling, and production plugin services are explicitly not claimed.
-
-### Phase 2.3 architectural guarantees
-
-1. **Stable capability identity.** Rules, analyzers, and plugins have explicit identity and version metadata.
-2. **Typed capabilities.** Analyzer capabilities are explicit and constrained to the supported analyzer contract.
-3. **Kind safety.** A plugin's declared kind must match its executable implementation.
-4. **Duplicate protection.** Registry and registration manifests reject duplicate plugin identities.
-5. **Capability discovery.** Consumers can select registered plugins by kind or capability.
-6. **Failure isolation.** Analyzer exceptions become structured failures and do not abort unrelated analyzers.
-7. **Deterministic execution.** Analyzer selection, observations, failures, and batches have stable ordering semantics.
-8. **Persistence separation.** Orchestration produces analysis values and does not bypass the ingestion/persistence boundary.
-9. **Immutability.** Contract records and returned orchestration values are frozen where required by the model.
-
-### Phase 2.3 non-goals
-
-Phase 2.3 does not claim:
-
-- parser-specific analyzers;
-- dynamic filesystem/package plugin loading;
-- complete plugin lifecycle management;
-- compatibility negotiation between plugin versions;
-- distributed scheduling;
-- persistence of analysis observations;
-- a production plugin marketplace/service.
-
-### Phase 2.3 acceptance
-
-**COMPLETE / LOCKED.** Typecheck, test suite, and CI acceptance are green. The Rule/Analyzer/Plugin/Registry/Orchestration boundaries are frozen as the baseline for Phase 2.4. Future changes that alter these boundaries require an explicit source-of-truth update and, where architectural, an ADR.
+Phase 2.4 deliberately remains a deterministic derivation boundary. It does not claim a general-purpose probabilistic inference engine, distributed scheduling, dynamic plugin loading, or production-scale inference infrastructure.
 
 ## Implemented package responsibilities
 
@@ -137,8 +123,10 @@ packages/
   inference/  Derivation/inference capabilities
   validation  Validation contracts, rules, orchestration, validated writes,
               discovery, detection, observations, runners, normalization,
-              rule/analyzer/plugin contracts, registry and deterministic analysis
+              rule/analyzer/plugin contracts, registry, deterministic analysis,
+              and derivation persistence orchestration
   storage/    Repository/unit-of-work contracts, memory and PostgreSQL persistence
+              including derivation and provenance repositories
   testing/    Shared test fixtures and assertions
 ```
 
@@ -146,7 +134,7 @@ packages/
 
 ### Immutability
 
-Domain records and validation/provenance/discovery records are constructed as immutable values. Builders/factories normalize input and return deeply frozen records where the model requires it.
+Domain records and validation/provenance/discovery/derivation records are constructed as immutable values. Builders/factories normalize input and return deeply frozen records where the model requires it.
 
 ### Branded identity
 
@@ -176,6 +164,10 @@ Discovery observes resources and produces immutable observations. It does not pe
 
 Phase 2.3 separates capability declaration from execution. Plugins expose metadata and implementations; the registry handles in-process discovery; orchestration executes analyzers and returns immutable analysis values. Persistence remains outside this boundary.
 
+### Derivation lineage boundary
+
+Phase 2.4 derives ordinary domain assertions and records their origin explicitly through derivation and provenance. The derived assertion, derivation record, and provenance record share one UnitOfWork transaction. A lineage failure or commit failure rolls the transaction back; no partial derived fact is considered successful.
+
 ## Documentation source of truth
 
 The repository distinguishes implementation truth from the early design corpus.
@@ -189,21 +181,21 @@ The repository distinguishes implementation truth from the early design corpus.
 - `docs/02-phase-2/2.1-INGESTION-CONTRACT.md` — locked Phase 2.1 contract.
 - `docs/02-phase-2/2.2-DISCOVERY-PRIMITIVES.md` — locked Phase 2.2 contract.
 - `docs/02-phase-2/2.3-RULE-AND-ANALYZER-CONTRACTS.md` — locked Phase 2.3 contract.
+- `docs/02-phase-2/2.4-DERIVATION-AND-INFERENCE.md` — locked Phase 2.4 contract.
 
 Documents 73–84 are treated as the strongest semantic specification set, but their capabilities are not considered implemented unless this status document and the implementation matrix say so.
 
 ## Verification state
 
-Phase 1 completion was accepted with CI green. Phase 2.1 implementation, regression tests, and CI are green and the step is locked. Phase 2.2 implementation, regression tests, integration tests, typecheck, and CI are green and the step is locked. Phase 2.3 implementation, regression tests, typecheck, and CI are green and the step is locked.
+Phase 1 completion was accepted with CI green. Phase 2.1 implementation, regression tests, and CI are green and the step is locked. Phase 2.2 implementation, regression tests, integration tests, typecheck, and CI are green and the step is locked. Phase 2.3 implementation, regression tests, typecheck, and CI are green and the step is locked. Phase 2.4 implementation, deterministic end-to-end tests, typecheck, test suite, and CI are green and the step is locked.
 
 ## What is deliberately NOT claimed yet
 
-- Phase 2.4 completion.
-- Independent provenance persistence through `UnitOfWork`.
+- Phase 2.5 completion.
 - Production-grade plugin loading/lifecycle/compatibility negotiation.
 - Production-grade database migration orchestration beyond the initial migration foundation.
 - A complete public API/application surface.
-- Full inference engine behavior.
+- Full inference engine behavior beyond deterministic derivation.
 - Complete ontology authoring and constraint management.
 - Production web UX.
 - Full conflict-resolution workflows.
