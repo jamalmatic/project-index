@@ -3,13 +3,14 @@ import type {
   Entity,
   Relationship,
 } from "@project-index/domain";
-import type { Evidence, Source } from "@project-index/evidence";
+import type { Evidence, Source, Derivation, ProvenanceRecord } from "@project-index/evidence";
 import type {
   AssertionId,
   EntityId,
   RelationshipId,
 } from "@project-index/core";
 import type { EvidenceId, SourceId } from "@project-index/evidence";
+import type { DerivationId, ProvenanceId } from "@project-index/evidence";
 
 export interface EntityRepository {
   getById(id: EntityId): Promise<Entity | null>;
@@ -36,12 +37,24 @@ export interface EvidenceRepository {
   save(evidence: Evidence): Promise<void>;
 }
 
+export interface DerivationRepository {
+  getById(id: DerivationId): Promise<Derivation | null>;
+  save(derivation: Derivation): Promise<void>;
+}
+
+export interface ProvenanceRepository {
+  getById(id: ProvenanceId): Promise<ProvenanceRecord | null>;
+  save(record: ProvenanceRecord): Promise<void>;
+}
+
 export interface UnitOfWork {
   entities: EntityRepository;
   assertions: AssertionRepository;
   relationships: RelationshipRepository;
   sources: SourceRepository;
   evidence: EvidenceRepository;
+  derivations: DerivationRepository;
+  provenance: ProvenanceRepository;
 
   commit(): Promise<void>;
   rollback(): Promise<void>;
