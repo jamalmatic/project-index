@@ -7,3 +7,4 @@ export { validate, validateMany, validateAssertion, validateRelationship, valida
 export type { ValidationContext } from "./orchestrator";
 export * from "./writer";
 export * from "./ingestion";
+export * from "./discovery";
