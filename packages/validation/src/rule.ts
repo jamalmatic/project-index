@@ -32,12 +32,13 @@ const requiredText = (value: string, name: string): string => {
 };
 
 export const createRuleDefinition = (input: Omit<RuleInput, "execute">): RuleDefinition => {
+  const id = requiredText(input.id, "Rule ID");
   const capabilities = [...(input.capabilities ?? ["detection"])];
   if (capabilities.length === 0) throw new Error("Rule must declare at least one capability");
   if (new Set(capabilities).size !== capabilities.length) throw new Error("Rule capabilities must be unique");
 
   return deepFreeze({
-    id: detectionRuleId(input.id),
+    id: detectionRuleId(id),
     version: requiredText(input.version, "Rule version"),
     name: requiredText(input.name, "Rule name"),
     ...(input.description?.trim() ? { description: input.description.trim() } : {}),
