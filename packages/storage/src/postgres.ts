@@ -4,6 +4,7 @@ import type { Evidence, Source, Derivation, ProvenanceRecord } from "@project-in
 import type { AssertionId, EntityId, RelationshipId } from "@project-index/core";
 import type { EvidenceId, SourceId, DerivationId, ProvenanceId } from "@project-index/evidence";
 import type { QueryService } from "./query";
+import type { QueryTraversalService } from "./traversal";
 import type { AssertionRepository, EntityRepository, EvidenceRepository, RelationshipRepository, SourceRepository, DerivationRepository, ProvenanceRepository, UnitOfWork } from "./repository";
 
 interface Persisted { readonly id: string }
@@ -28,6 +29,13 @@ class PostgresReadRepository<T extends Persisted> {
   async getById(id: string): Promise<T | null> {
     const result = await this.pool.query<{ data: T }>(`SELECT data FROM ${this.table} WHERE id = $1`, [id]);
     return result.rows[0]?.data ?? null;
+  }
+  async findByText(field: string, value: string): Promise<readonly T[]> {
+    const result = await this.pool.query<{ data: T }>(
+      `SELECT data FROM ${this.table} WHERE data ->> $1 = $2 ORDER BY id ASC`,
+      [field, value],
+    );
+    return result.rows.map((row) => row.data);
   }
 }
 
@@ -116,6 +124,7 @@ export interface PostgresStorage {
   pool: Pool;
   createUnitOfWork(): Promise<PostgresUnitOfWork>;
   createQueryService(): QueryService;
+  createQueryTraversalService(): QueryTraversalService;
   close(): Promise<void>;
 }
 
@@ -130,6 +139,21 @@ export const createPostgresStorage = (connectionString: string): PostgresStorage
     derivations: { getById: (id) => new PostgresReadRepository<Derivation>(pool, "derivations").getById(id) },
     provenance: { getById: (id) => new PostgresReadRepository<ProvenanceRecord>(pool, "provenance").getById(id) },
   });
+  const createQueryTraversalService = (): QueryTraversalService => ({
+    entities: {
+      findByType: async (type) => new PostgresReadRepository<Entity>(pool, "entities").findByText("type", type),
+    },
+    assertions: {
+      findBySubject: async (subject) => new PostgresReadRepository<Assertion>(pool, "assertions").findByText("subject", subject),
+      findByObject: async (object) => new PostgresReadRepository<Assertion>(pool, "assertions").findByText("object", object),
+      findByPredicate: async (predicate) => new PostgresReadRepository<Assertion>(pool, "assertions").findByText("predicate", predicate),
+    },
+    relationships: {
+      findBySubject: async (subject) => new PostgresReadRepository<Relationship>(pool, "relationships").findByText("subject", subject),
+      findByObject: async (object) => new PostgresReadRepository<Relationship>(pool, "relationships").findByText("object", object),
+      findByPredicate: async (predicate) => new PostgresReadRepository<Relationship>(pool, "relationships").findByText("predicate", predicate),
+    },
+  });
   return {
     pool,
     createUnitOfWork: async () => {
@@ -138,6 +162,7 @@ export const createPostgresStorage = (connectionString: string): PostgresStorage
       catch (error) { client.release(); throw error; }
     },
     createQueryService,
+    createQueryTraversalService,
     close: () => pool.end(),
   };
 };
