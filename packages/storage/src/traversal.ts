@@ -1,5 +1,5 @@
 import type { Assertion, Entity, Relationship } from "@project-index/domain";
-import type { AssertionId, EntityId, RelationshipId } from "@project-index/core";
+import type { EntityId } from "@project-index/core";
 
 /**
  * Canonical Phase 2.6 traversal contract.
