@@ -6,6 +6,7 @@ import type { EvidenceId, SourceId, DerivationId, ProvenanceId } from "@project-
 import type { QueryService } from "./query";
 import type { QueryTraversalService } from "./traversal";
 import type { QueryEvidenceTraversalService } from "./evidence-traversal";
+import { createUnifiedQueryService, type UnifiedQueryService } from "./unified-query";
 import type { AssertionRepository, EntityRepository, EvidenceRepository, RelationshipRepository, SourceRepository, DerivationRepository, ProvenanceRepository, UnitOfWork } from "./repository";
 
 interface Persisted { readonly id: string }
@@ -134,6 +135,7 @@ export interface PostgresStorage {
   createQueryService(): QueryService;
   createQueryTraversalService(): QueryTraversalService;
   createQueryEvidenceTraversalService(): QueryEvidenceTraversalService;
+  createUnifiedQueryService(): UnifiedQueryService;
   close(): Promise<void>;
 }
 
@@ -192,6 +194,12 @@ export const createPostgresStorage = (connectionString: string): PostgresStorage
       },
     },
   });
+  const createUnifiedQueryService = (): UnifiedQueryService =>
+    createUnifiedQueryServiceFromParts(
+      createQueryService(),
+      createQueryTraversalService(),
+      createQueryEvidenceTraversalService(),
+    );
   return {
     pool,
     createUnitOfWork: async () => {
@@ -202,6 +210,22 @@ export const createPostgresStorage = (connectionString: string): PostgresStorage
     createQueryService,
     createQueryTraversalService,
     createQueryEvidenceTraversalService,
+    createUnifiedQueryService,
     close: () => pool.end(),
   };
 };
+
+const createUnifiedQueryServiceFromParts = (
+  query: QueryService,
+  traversal: QueryTraversalService,
+  evidenceTraversal: QueryEvidenceTraversalService,
+): UnifiedQueryService => ({
+  ...query,
+  entities: { ...query.entities, ...traversal.entities },
+  assertions: { ...query.assertions, ...traversal.assertions },
+  relationships: { ...query.relationships, ...traversal.relationships },
+  sources: { ...query.sources, ...evidenceTraversal.sources },
+  evidence: { ...query.evidence, ...evidenceTraversal.evidence },
+  derivations: { ...query.derivations, ...evidenceTraversal.derivations },
+  provenance: { ...query.provenance, ...evidenceTraversal.provenance },
+});
