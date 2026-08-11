@@ -1,0 +1,45 @@
+import { describe, expect, it, vi } from "vitest";
+import { createApplicationServices } from "./application";
+import { ApplicationError } from "./errors";
+
+const makePersistence = () => ({
+  query: {
+    entities: {
+      getById: vi.fn(),
+    },
+  },
+  createWriter: vi.fn(),
+  close: vi.fn(),
+});
+
+describe("Phase 2.7 application error boundary", () => {
+  it("maps synchronous query failures to ApplicationError", async () => {
+    const persistence = makePersistence();
+    const cause = new Error("connection refused");
+    persistence.query.entities.getById.mockImplementation(() => {
+      throw cause;
+    });
+
+    const services = createApplicationServices(persistence as never);
+
+    await expect(services.query.entities.getById("entity-1")).rejects.toMatchObject({
+      name: "ApplicationError",
+      code: "STORAGE_ERROR",
+      cause,
+    });
+  });
+
+  it("maps asynchronous query failures to ApplicationError", async () => {
+    const persistence = makePersistence();
+    const cause = new Error("database unavailable");
+    persistence.query.entities.getById.mockRejectedValue(cause);
+
+    const services = createApplicationServices(persistence as never);
+
+    await expect(services.query.entities.getById("entity-1")).rejects.toBeInstanceOf(ApplicationError);
+    await expect(services.query.entities.getById("entity-1")).rejects.toMatchObject({
+      code: "STORAGE_ERROR",
+      cause,
+    });
+  });
+});
