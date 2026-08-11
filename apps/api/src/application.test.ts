@@ -27,4 +27,12 @@ describe("Phase 2.7 application composition boundary", () => {
     await expect(services.createWriter()).resolves.toBe(writer);
     expect(persistence.createWriter).toHaveBeenCalledWith(undefined);
   });
+
+  it("owns application shutdown and delegates it to persistence", async () => {
+    const persistence = makePersistence();
+    const services = createApplicationServices(persistence);
+
+    await services.close();
+    expect(persistence.close).toHaveBeenCalledOnce();
+  });
 });
