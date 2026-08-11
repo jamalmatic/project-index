@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { entityId } from "@project-index/core";
 import { createApplicationServices } from "./application";
 import { ApplicationError } from "./errors";
 
@@ -22,7 +23,7 @@ describe("Phase 2.7 application error boundary", () => {
 
     const services = createApplicationServices(persistence as never);
 
-    await expect(services.query.entities.getById("entity-1")).rejects.toMatchObject({
+    await expect(services.query.entities.getById(entityId("entity-1"))).rejects.toMatchObject({
       name: "ApplicationError",
       code: "STORAGE_ERROR",
       cause,
@@ -36,8 +37,8 @@ describe("Phase 2.7 application error boundary", () => {
 
     const services = createApplicationServices(persistence as never);
 
-    await expect(services.query.entities.getById("entity-1")).rejects.toBeInstanceOf(ApplicationError);
-    await expect(services.query.entities.getById("entity-1")).rejects.toMatchObject({
+    await expect(services.query.entities.getById(entityId("entity-1"))).rejects.toBeInstanceOf(ApplicationError);
+    await expect(services.query.entities.getById(entityId("entity-1"))).rejects.toMatchObject({
       code: "STORAGE_ERROR",
       cause,
     });
