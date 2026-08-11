@@ -5,6 +5,7 @@ import type { AssertionId, EntityId, RelationshipId } from "@project-index/core"
 import type { EvidenceId, SourceId, DerivationId, ProvenanceId } from "@project-index/evidence";
 import type { QueryService } from "./query";
 import type { QueryTraversalService } from "./traversal";
+import type { QueryEvidenceTraversalService } from "./evidence-traversal";
 import type { AssertionRepository, EntityRepository, EvidenceRepository, RelationshipRepository, SourceRepository, DerivationRepository, ProvenanceRepository, UnitOfWork } from "./repository";
 
 interface Persisted { readonly id: string }
@@ -34,6 +35,13 @@ class PostgresReadRepository<T extends Persisted> {
     const result = await this.pool.query<{ data: T }>(
       `SELECT data FROM ${this.table} WHERE data ->> $1 = $2 ORDER BY id ASC`,
       [field, value],
+    );
+    return result.rows.map((row) => row.data);
+  }
+  async findByJsonArrayContains(field: string, value: string): Promise<readonly T[]> {
+    const result = await this.pool.query<{ data: T }>(
+      `SELECT data FROM ${this.table} WHERE data -> $1 @> $2::jsonb ORDER BY id ASC`,
+      [field, JSON.stringify([value])],
     );
     return result.rows.map((row) => row.data);
   }
@@ -125,6 +133,7 @@ export interface PostgresStorage {
   createUnitOfWork(): Promise<PostgresUnitOfWork>;
   createQueryService(): QueryService;
   createQueryTraversalService(): QueryTraversalService;
+  createQueryEvidenceTraversalService(): QueryEvidenceTraversalService;
   close(): Promise<void>;
 }
 
@@ -154,6 +163,35 @@ export const createPostgresStorage = (connectionString: string): PostgresStorage
       findByPredicate: async (predicate) => new PostgresReadRepository<Relationship>(pool, "relationships").findByText("predicate", predicate),
     },
   });
+  const createQueryEvidenceTraversalService = (): QueryEvidenceTraversalService => ({
+    sources: {
+      findByKind: async (kind) => new PostgresReadRepository<Source>(pool, "sources").findByText("kind", kind),
+    },
+    evidence: {
+      findBySource: async (sourceId) => new PostgresReadRepository<Evidence>(pool, "evidence").findByText("sourceId", sourceId),
+      findByAssertion: async (assertionId) => new PostgresReadRepository<Evidence>(pool, "evidence").findByText("assertionId", assertionId),
+      findByEntity: async (entityId) => new PostgresReadRepository<Evidence>(pool, "evidence").findByText("entityId", entityId),
+    },
+    derivations: {
+      findByOutputAssertion: async (assertionId) => new PostgresReadRepository<Derivation>(pool, "derivations").findByText("outputAssertionId", assertionId),
+      findByInputAssertion: async (assertionId) => new PostgresReadRepository<Derivation>(pool, "derivations").findByJsonArrayContains("inputAssertionIds", assertionId),
+      findByRule: async (ruleId) => new PostgresReadRepository<Derivation>(pool, "derivations").findByText("ruleId", ruleId),
+    },
+    provenance: {
+      findBySubjectId: async (id) => {
+        const result = await pool.query<{ data: ProvenanceRecord }>(
+          `SELECT data FROM provenance
+           WHERE data -> 'subject' ->> 'sourceId' = $1
+              OR data -> 'subject' ->> 'evidenceId' = $1
+              OR data -> 'subject' ->> 'assertionId' = $1
+              OR data -> 'subject' ->> 'entityId' = $1
+           ORDER BY id ASC`,
+          [id],
+        );
+        return result.rows.map((row) => row.data);
+      },
+    },
+  });
   return {
     pool,
     createUnitOfWork: async () => {
@@ -163,6 +201,7 @@ export const createPostgresStorage = (connectionString: string): PostgresStorage
     },
     createQueryService,
     createQueryTraversalService,
+    createQueryEvidenceTraversalService,
     close: () => pool.end(),
   };
 };
