@@ -9,9 +9,10 @@
 **Phase 2.2 — Discovery Primitives: COMPLETE / LOCKED**  
 **Phase 2.3 — Rule and Analyzer Contracts: COMPLETE / LOCKED**  
 **Phase 2.4 — Derivation and Inference: COMPLETE / LOCKED**  
-**Next: Phase 2.5 — Validation Profiles and Conflict Handling**
+**Phase 2.5 — Validation Profiles and Conflict Handling: COMPLETE / LOCKED**  
+**Next: Phase 2.6 — Query / Read Contract**
 
-Phase 1 is the completed foundation baseline. Phase 2.1, 2.2, 2.3, and 2.4 are locked after implementation, regression testing, deterministic end-to-end testing, typecheck, and CI acceptance.
+Phase 2.5 is locked after implementation, regression testing, public-API integration tests, typecheck, test-suite acceptance, and CI green. The locked boundary is deterministic conflict detection, explicit conflict resolution, durable conflict-decision serialization, transactional persistence, and one public validation entry point.
 
 ## Phase 1 — Foundation
 
@@ -108,6 +109,62 @@ input assertions + evidence
 
 Phase 2.4 deliberately remains a deterministic derivation boundary. It does not claim a general-purpose probabilistic inference engine, distributed scheduling, dynamic plugin loading, or production-scale inference infrastructure.
 
+### Step 2.5 — Validation Profiles and Conflict Handling — COMPLETE / LOCKED
+
+The Phase 2.5 boundary is implemented in `packages/validation/src/` and is covered by unit, profile, transaction, serialization, and public-API integration tests.
+
+Implemented contracts and components:
+
+- `profile.ts` — named validation profiles and composable validation-rule execution;
+- `conflict.ts` — deterministic conflict classification and stable conflict identity;
+- `conflict-resolution.ts` — explicit conflict-resolution policy contract;
+- `conflict-serialization.ts` — durable conflict + resolution decision record;
+- `conflict-decision-store.ts` — persistence boundary for serialized decisions;
+- `conflict-decision-transaction.ts` — UnitOfWork-aware transactional persistence with rollback on failure;
+- `profile-conflict.ts` — profile validation plus conflict detection/resolution;
+- `profile-conflict-transaction.ts` — complete profile → conflict → resolution → serialization → transaction flow;
+- `public-validation.ts` — public validation entry point for consumers;
+- corresponding tests — deterministic conflict, policy, serialization, transaction, profile, and public API coverage.
+
+The implemented flow is:
+
+```text
+ValidationProfile
+  → validation
+  → conflict detection
+  → explicit resolution policy
+  → serialized decision
+  → transactional persistence
+  → UnitOfWork commit
+```
+
+Failure flow:
+
+```text
+persistence failure
+  → UnitOfWork rollback
+  → error propagated
+  → no successful commit
+```
+
+The Phase 2.5 contract intentionally distinguishes three states:
+
+1. **Validation result** — what the rules reported.
+2. **Conflict** — where multiple rules produce a competing validation condition.
+3. **Resolution** — an explicit policy decision about that conflict.
+
+An unresolved conflict is never silently converted into an accepted fact. Conflict resolution is represented separately from the underlying validation result.
+
+Supported resolution policies are currently:
+
+- `reject` — preserve the conflict as unresolved;
+- `accept-first` — select the first deterministic rule;
+- `accept-last` — select the last deterministic rule.
+
+The persistence repository remains deliberately narrow: `save(record)` is the repository contract. Batch atomicity is provided by the surrounding `UnitOfWork`, not by introducing a second batch API.
+
+Phase 2.5 does **not** claim probabilistic conflict resolution, human review workflows, distributed policy execution, external policy services, or production-grade governance/conformance infrastructure.
+
 ## Implemented package responsibilities
 
 ```text
@@ -121,10 +178,10 @@ packages/
   ontology/    Entity/relationship constraints
   evidence/    Source, evidence, provenance and derivation models
   inference/  Derivation/inference capabilities
-  validation  Validation contracts, rules, orchestration, validated writes,
+  validation  Validation contracts, profiles, rules, orchestration, validated writes,
               discovery, detection, observations, runners, normalization,
               rule/analyzer/plugin contracts, registry, deterministic analysis,
-              and derivation persistence orchestration
+              derivation persistence orchestration, and conflict handling
   storage/    Repository/unit-of-work contracts, memory and PostgreSQL persistence
               including derivation and provenance repositories
   testing/    Shared test fixtures and assertions
@@ -134,7 +191,7 @@ packages/
 
 ### Immutability
 
-Domain records and validation/provenance/discovery/derivation records are constructed as immutable values. Builders/factories normalize input and return deeply frozen records where the model requires it.
+Domain records and validation/provenance/discovery/derivation/conflict records are constructed as immutable values. Builders/factories normalize input and return deeply frozen records where the model requires it.
 
 ### Branded identity
 
@@ -146,7 +203,11 @@ The repository uses `exactOptionalPropertyTypes`. Implementations must omit abse
 
 ### Validation
 
-Validation is modeled as a domain capability rather than an ad-hoc collection of checks. Validation produces structured issues and results and supports referential, consistency, temporal, and orchestrated validation.
+Validation is modeled as a domain capability rather than an ad-hoc collection of checks. Validation produces structured issues and results and supports referential, consistency, temporal, profile, and conflict validation.
+
+### Conflict handling
+
+Conflicts have deterministic identities derived from the subject and sorted participating rule IDs. Resolution requires an explicit policy. The result of conflict resolution is recorded as a durable decision and persisted transactionally.
 
 ### Persistence
 
@@ -168,6 +229,10 @@ Phase 2.3 separates capability declaration from execution. Plugins expose metada
 
 Phase 2.4 derives ordinary domain assertions and records their origin explicitly through derivation and provenance. The derived assertion, derivation record, and provenance record share one UnitOfWork transaction. A lineage failure or commit failure rolls the transaction back; no partial derived fact is considered successful.
 
+### Profile execution boundary
+
+Phase 2.5 exposes one public validation workflow while keeping internal validation, conflict, serialization, and persistence contracts separate. Consumers do not need to assemble those internal pieces manually.
+
 ## Documentation source of truth
 
 The repository distinguishes implementation truth from the early design corpus.
@@ -182,21 +247,22 @@ The repository distinguishes implementation truth from the early design corpus.
 - `docs/02-phase-2/2.2-DISCOVERY-PRIMITIVES.md` — locked Phase 2.2 contract.
 - `docs/02-phase-2/2.3-RULE-AND-ANALYZER-CONTRACTS.md` — locked Phase 2.3 contract.
 - `docs/02-phase-2/2.4-DERIVATION-AND-INFERENCE.md` — locked Phase 2.4 contract.
+- `docs/02-phase-2/2.5-VALIDATION-PROFILES-AND-CONFLICT-HANDLING.md` — locked Phase 2.5 contract.
 
 Documents 73–84 are treated as the strongest semantic specification set, but their capabilities are not considered implemented unless this status document and the implementation matrix say so.
 
 ## Verification state
 
-Phase 1 completion was accepted with CI green. Phase 2.1 implementation, regression tests, and CI are green and the step is locked. Phase 2.2 implementation, regression tests, integration tests, typecheck, and CI are green and the step is locked. Phase 2.3 implementation, regression tests, typecheck, and CI are green and the step is locked. Phase 2.4 implementation, deterministic end-to-end tests, typecheck, test suite, and CI are green and the step is locked.
+Phase 1 completion was accepted with CI green. Phase 2.1 implementation, regression tests, and CI are green and the step is locked. Phase 2.2 implementation, regression tests, integration tests, typecheck, and CI are green and the step is locked. Phase 2.3 implementation, regression tests, typecheck, and CI are green and the step is locked. Phase 2.4 implementation, deterministic end-to-end tests, typecheck, test suite, and CI are green and the step is locked. Phase 2.5 implementation, public-API integration tests, typecheck, test suite, and CI are green and the step is locked.
 
 ## What is deliberately NOT claimed yet
 
-- Phase 2.5 completion.
+- Phase 2.6 completion.
 - Production-grade plugin loading/lifecycle/compatibility negotiation.
 - Production-grade database migration orchestration beyond the initial migration foundation.
-- A complete public API/application surface.
+- A complete application/API surface beyond the public validation entry point.
 - Full inference engine behavior beyond deterministic derivation.
 - Complete ontology authoring and constraint management.
 - Production web UX.
-- Full conflict-resolution workflows.
+- Human or distributed conflict-resolution workflows.
 - Performance/scaling guarantees.
