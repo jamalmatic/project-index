@@ -11,9 +11,11 @@ import type { PersistenceService } from "./persistence";
 export interface ApplicationServices {
   readonly query: UnifiedQueryService;
   createWriter(options?: Omit<ValidatedWriterOptions, "unitOfWork">): ReturnType<PersistenceService["createWriter"]>;
+  close(): Promise<void>;
 }
 
 export const createApplicationServices = (persistence: PersistenceService): ApplicationServices => ({
   query: persistence.query,
   createWriter: (options) => persistence.createWriter(options),
+  close: () => persistence.close(),
 });
