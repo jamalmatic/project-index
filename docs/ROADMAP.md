@@ -104,21 +104,26 @@ Delivered:
 
 Acceptance gate: **passed**. Every successful derived assertion has an inspectable derivation/provenance chain back to its input assertions/evidence, and the complete lineage is committed atomically. See `docs/02-phase-2/2.4-DERIVATION-AND-INFERENCE.md` for the locked contract and explicit non-goals.
 
-### Step 2.5 — Validation profiles and conflict handling — NEXT
+### Step 2.5 — Validation profiles and conflict handling — COMPLETE / LOCKED
 
 Grounded primarily in Document 84 and the existing validation package.
 
-Deliver:
+Delivered:
 
 - named validation profiles;
-- composable validation rules;
-- conflict/consistency classification;
-- validation reporting;
-- validation-before-persist orchestration.
+- composable validation-rule execution;
+- deterministic conflict classification and stable conflict identity;
+- explicit conflict-resolution policies (`reject`, `accept-first`, `accept-last`);
+- durable conflict + resolution decision serialization;
+- conflict-decision persistence boundary;
+- UnitOfWork-aware transactional persistence with rollback on failure;
+- profile-integrated conflict detection and resolution;
+- one public validation entry point for the complete workflow;
+- unit, profile, serialization, transaction, and public-API integration tests.
 
-Acceptance gate: validation is reusable, deterministic, and never silently converts an unresolved conflict into a fact.
+Acceptance gate: **passed**. Validation is reusable and deterministic; conflict decisions are explicit and durable; unresolved conflicts are never silently converted into facts; typecheck, test suite, and CI are green. See `docs/02-phase-2/2.5-VALIDATION-PROFILES-AND-CONFLICT-HANDLING.md` for the locked contract and explicit non-goals.
 
-### Step 2.6 — Query/read contract
+### Step 2.6 — Query/read contract — NEXT
 
 Grounded primarily in Documents 52, 56, 57, 63 and the existing persistence layer.
 
