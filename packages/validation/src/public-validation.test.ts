@@ -37,7 +37,6 @@ describe("public validation API", () => {
     const uow = unitOfWork();
     const repository: TransactionalConflictDecisionRepository = {
       save: vi.fn().mockResolvedValue(undefined),
-      saveMany: vi.fn().mockResolvedValue(undefined),
     };
     const profile = createValidationProfile({
       id: "profile.public",
@@ -59,10 +58,8 @@ describe("public validation API", () => {
 
   it("keeps clean validation free of conflict persistence", async () => {
     const uow = unitOfWork();
-    const repository: TransactionalConflictDecisionRepository = {
-      save: vi.fn().mockResolvedValue(undefined),
-      saveMany: vi.fn().mockResolvedValue(undefined),
-    };
+    const save = vi.fn().mockResolvedValue(undefined);
+    const repository: TransactionalConflictDecisionRepository = { save };
     const profile = createValidationProfile({
       id: "profile.clean",
       name: "Clean",
@@ -77,7 +74,7 @@ describe("public validation API", () => {
 
     expect(result.conflicts).toEqual([]);
     expect(result.persistedConflictDecisions).toEqual([]);
-    expect(repository.saveMany).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
     expect(uow.commit).toHaveBeenCalledTimes(1);
   });
 
@@ -86,7 +83,6 @@ describe("public validation API", () => {
     const error = new Error("persistence failed");
     const repository: TransactionalConflictDecisionRepository = {
       save: vi.fn().mockRejectedValue(error),
-      saveMany: vi.fn().mockRejectedValue(error),
     };
     const profile = createValidationProfile({
       id: "profile.failure",
