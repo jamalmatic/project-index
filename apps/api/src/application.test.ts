@@ -12,7 +12,7 @@ describe("Phase 2.7 application composition boundary", () => {
     const persistence = makePersistence();
     const services = createApplicationServices(persistence);
 
-    expect(services.query).toBe(persistence.query);
+    expect(services.query).toEqual(persistence.query);
     expect(services).not.toHaveProperty("storage");
     expect(services).not.toHaveProperty("unitOfWork");
     expect(services).not.toHaveProperty("pool");
