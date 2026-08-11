@@ -6,7 +6,7 @@ import type { EvidenceId, SourceId, DerivationId, ProvenanceId } from "@project-
 import type { QueryService } from "./query";
 import type { QueryTraversalService } from "./traversal";
 import type { QueryEvidenceTraversalService } from "./evidence-traversal";
-import { createUnifiedQueryService, type UnifiedQueryService } from "./unified-query";
+import type { UnifiedQueryService } from "./unified-query";
 import type { AssertionRepository, EntityRepository, EvidenceRepository, RelationshipRepository, SourceRepository, DerivationRepository, ProvenanceRepository, UnitOfWork } from "./repository";
 
 interface Persisted { readonly id: string }
