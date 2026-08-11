@@ -15,9 +15,15 @@ export interface ApplicationServices {
   close(): Promise<void>;
 }
 
-const mapQueryErrors = <T>(operation: () => T): T => {
+const mapQueryErrors = <T>(operation: () => T): T | Promise<T> => {
   try {
-    return operation();
+    const result = operation();
+    if (result instanceof Promise) {
+      return result.catch((error) => {
+        throw toApplicationError(error);
+      });
+    }
+    return result;
   } catch (error) {
     throw toApplicationError(error);
   }
