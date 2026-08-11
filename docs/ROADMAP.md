@@ -4,18 +4,49 @@ This roadmap is intentionally conservative. A phase becomes **complete** only wh
 
 ## Phase 2 — Capability Layer — ACTIVE
 
-### Step 2.6 — Query/read contract — ACTIVE
+### Step 2.6 — Query/read contract — LOCKED / COMPLETE
 
-Grounded primarily in Documents 52, 56, 57, 63 and the existing persistence layer.
+The Phase 2.6 read boundary is now complete and CI-green.
 
-Delivered:
+Delivered and locked:
 
 - canonical read/query interfaces;
 - entity lookup;
 - assertion/relationship traversal;
 - evidence/provenance/derivation retrieval;
 - true read-only query facades;
-- deterministic canonical-ID ordering.
+- deterministic canonical-ID ordering;
+- unified `UnifiedQueryService` read boundary;
+- live PostgreSQL identity reads;
+- live PostgreSQL core traversal reads;
+- live PostgreSQL evidence/derivation/provenance traversal reads;
+- application-facing `PersistenceService.query` exposes the unified read contract;
+- raw `PostgresStorage` is not exposed through the application persistence contract;
+- `UnitOfWork` remains internal to the write/transaction path and is not part of the application-facing read boundary.
+
+The application read path is therefore:
+
+```text
+application
+    ↓
+PersistenceService.query
+    ↓
+UnifiedQueryService
+    ↓
+PostgreSQL read repositories / pool
+```
+
+The write path remains separate:
+
+```text
+application
+    ↓
+PersistenceService.createWriter()
+    ↓
+UnitOfWork
+    ↓
+ValidatedWriter
+```
 
 #### Step 2.6.5 — Temporal query semantics — LOCKED DECISION / IMPLEMENTATION BLOCKED
 
@@ -25,7 +56,7 @@ See `docs/02-phase-2/2.6.5-TEMPORAL-QUERY-SEMANTICS.md` for the locked decision,
 
 Acceptance gate for 2.6.5: the authoritative temporal type, semantics, and tests must exist before temporal query code is implemented; memory and PostgreSQL implementations must agree; `pnpm typecheck` and `pnpm test` must be green.
 
-### Step 2.7 — Application composition layer
+### Step 2.7 — Application composition layer — NEXT
 
 Grounded primarily in Documents 7, 18, 42, 47 and 55.
 
