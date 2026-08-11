@@ -2,7 +2,8 @@ import { Pool, type PoolClient } from "pg";
 import type { Assertion, Entity, Relationship } from "@project-index/domain";
 import type { Evidence, Source, Derivation, ProvenanceRecord } from "@project-index/evidence";
 import type { AssertionId, EntityId, RelationshipId } from "@project-index/core";
-import type { EvidenceId, SourceId } from "@project-index/evidence";
+import type { EvidenceId, SourceId, DerivationId, ProvenanceId } from "@project-index/evidence";
+import type { QueryService } from "./query";
 import type { AssertionRepository, EntityRepository, EvidenceRepository, RelationshipRepository, SourceRepository, DerivationRepository, ProvenanceRepository, UnitOfWork } from "./repository";
 
 interface Persisted { readonly id: string }
@@ -19,6 +20,14 @@ class PostgresRepository<T extends Persisted> {
        ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP`,
       [value.id, JSON.stringify(value)],
     );
+  }
+}
+
+class PostgresReadRepository<T extends Persisted> {
+  constructor(private readonly pool: Pool, private readonly table: string) {}
+  async getById(id: string): Promise<T | null> {
+    const result = await this.pool.query<{ data: T }>(`SELECT data FROM ${this.table} WHERE id = $1`, [id]);
+    return result.rows[0]?.data ?? null;
   }
 }
 
@@ -55,13 +64,13 @@ export class PostgresEvidenceRepository implements EvidenceRepository {
 export class PostgresDerivationRepository implements DerivationRepository {
   private readonly repository: PostgresRepository<Derivation>;
   constructor(client: PoolClient) { this.repository = new PostgresRepository(client, "derivations"); }
-  getById(id: string) { return this.repository.getById(id); }
+  getById(id: DerivationId) { return this.repository.getById(id); }
   save(derivation: Derivation) { return this.repository.save(derivation); }
 }
 export class PostgresProvenanceRepository implements ProvenanceRepository {
   private readonly repository: PostgresRepository<ProvenanceRecord>;
   constructor(client: PoolClient) { this.repository = new PostgresRepository(client, "provenance"); }
-  getById(id: string) { return this.repository.getById(id); }
+  getById(id: ProvenanceId) { return this.repository.getById(id); }
   save(provenance: ProvenanceRecord) { return this.repository.save(provenance); }
 }
 
@@ -106,18 +115,29 @@ export class PostgresUnitOfWork implements UnitOfWork {
 export interface PostgresStorage {
   pool: Pool;
   createUnitOfWork(): Promise<PostgresUnitOfWork>;
+  createQueryService(): QueryService;
   close(): Promise<void>;
 }
 
 export const createPostgresStorage = (connectionString: string): PostgresStorage => {
   const pool = new Pool({ connectionString });
+  const createQueryService = (): QueryService => ({
+    entities: { getById: (id) => new PostgresReadRepository<Entity>(pool, "entities").getById(id) },
+    assertions: { getById: (id) => new PostgresReadRepository<Assertion>(pool, "assertions").getById(id) },
+    relationships: { getById: (id) => new PostgresReadRepository<Relationship>(pool, "relationships").getById(id) },
+    sources: { getById: (id) => new PostgresReadRepository<Source>(pool, "sources").getById(id) },
+    evidence: { getById: (id) => new PostgresReadRepository<Evidence>(pool, "evidence").getById(id) },
+    derivations: { getById: (id) => new PostgresReadRepository<Derivation>(pool, "derivations").getById(id) },
+    provenance: { getById: (id) => new PostgresReadRepository<ProvenanceRecord>(pool, "provenance").getById(id) },
+  });
   return {
     pool,
-    async createUnitOfWork() {
+    createUnitOfWork: async () => {
       const client = await pool.connect();
       try { await client.query("BEGIN"); return new PostgresUnitOfWork(client); }
       catch (error) { client.release(); throw error; }
     },
+    createQueryService,
     close: () => pool.end(),
   };
 };
