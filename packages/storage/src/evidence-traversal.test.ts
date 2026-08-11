@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { assertionId, entityId } from "@project-index/core";
-import { createDerivation, createEvidence, createProvenanceRecord, createSource, evidenceId, sourceId } from "@project-index/evidence";
+import { createDerivation, createEvidence, createProvenanceRecord, createSource, sourceId } from "@project-index/evidence";
 import { createQueryEvidenceTraversalService } from "./evidence-traversal";
 
 describe("Phase 2.6 evidence, provenance and derivation traversal", () => {
