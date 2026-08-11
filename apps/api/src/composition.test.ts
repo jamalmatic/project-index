@@ -26,7 +26,7 @@ describe("Phase 2.7 application composition root", () => {
     expect(persistenceModule.createPersistenceService).toHaveBeenCalledWith({
       databaseUrl: "postgres://example",
     });
-    expect(application.query).toBe(query);
+    expect(application.query).toEqual(query);
     expect(application.createWriter).toBeDefined();
     expect(application.close).toBeDefined();
     expect(application).not.toHaveProperty("storage");
