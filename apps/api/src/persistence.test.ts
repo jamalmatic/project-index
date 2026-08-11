@@ -10,4 +10,11 @@ describe("persistence application configuration", () => {
   it("normalizes configured DATABASE_URL whitespace", () => {
     expect(requireDatabaseUrl("  postgres://example  ")).toBe("postgres://example");
   });
+
+  it("keeps the application persistence contract read-only", async () => {
+    const module = await import("./persistence");
+    const source = module.createPersistenceService.toString();
+    expect(source).toContain("query: storage.createQueryService()");
+    expect(source).not.toContain("storage,");
+  });
 });
