@@ -1,8 +1,9 @@
-import type { ValidatedWriterOptions } from "@project-index/validation";
+import type { ValidatedWriterOptions, IngestionInput, IngestionResult, IngestionWriterFactory } from "@project-index/validation";
 import type { UnifiedQueryService } from "@project-index/storage";
 import type { PersistenceService } from "./persistence";
 import type { CommandService } from "./commands";
 import { createCommandService } from "./commands";
+import { IngestionService } from "@project-index/validation";
 import { toApplicationError } from "./errors";
 
 /**
@@ -14,6 +15,7 @@ import { toApplicationError } from "./errors";
 export interface ApplicationServices {
   readonly query: UnifiedQueryService;
   readonly commands: CommandService;
+  readonly ingestion: Pick<IngestionService, "ingest">;
   createWriter(options?: Omit<ValidatedWriterOptions, "unitOfWork">): ReturnType<PersistenceService["createWriter"]>;
   close(): Promise<void>;
 }
@@ -51,6 +53,11 @@ const protectQueryService = (query: UnifiedQueryService): UnifiedQueryService =>
     },
   }) as UnifiedQueryService;
 
+const protectIngestion = (ingestion: IngestionService): Pick<IngestionService, "ingest"> => ({
+  ingest: (input: IngestionInput): Promise<IngestionResult> =>
+    mapQueryErrors(() => ingestion.ingest(input)) as Promise<IngestionResult>,
+});
+
 export const createApplicationServices = (persistence: PersistenceService): ApplicationServices => ({
   query: protectQueryService(persistence.query),
   commands: createCommandService(async () => {
@@ -60,6 +67,13 @@ export const createApplicationServices = (persistence: PersistenceService): Appl
       throw toApplicationError(error);
     }
   }),
+  ingestion: protectIngestion(new IngestionService(async () => {
+    try {
+      return await persistence.createWriter();
+    } catch (error) {
+      throw toApplicationError(error);
+    }
+  })),
   createWriter: async (options) => {
     try {
       return await persistence.createWriter(options);
