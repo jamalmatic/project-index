@@ -1,5 +1,5 @@
-import type { AssertionInput, EntityInput, EvidenceInput, RelationshipInput } from "@project-index/domain";
-import type { SourceInput } from "@project-index/evidence";
+import type { AssertionInput, EntityInput, RelationshipInput } from "@project-index/domain";
+import type { EvidenceInput, SourceInput } from "@project-index/evidence";
 import type { ValidatedWriter } from "@project-index/validation";
 
 /** Phase 2.8 command boundary: application use-cases depend on the writer capability only. */
