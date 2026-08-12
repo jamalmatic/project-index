@@ -21,9 +21,9 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
       relationships: { getById: vi.fn().mockResolvedValue(result.relationships[0]) },
       evidence: { getById: vi.fn().mockResolvedValue(result.evidence[0]) },
       provenance: { getById: vi.fn().mockResolvedValue(result.provenance[0]) },
-    } as never;
+    };
 
-    const workflow = createIngestionReadWorkflow({ ingestion, query });
+    const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
     const input = { source: { id: "source-1", kind: "repository" } } as never;
     const output = await workflow.execute(input);
 
@@ -72,9 +72,9 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
       relationships: { getById: vi.fn() },
       evidence: { getById: vi.fn() },
       provenance: { getById: vi.fn() },
-    } as never;
+    };
 
-    const workflow = createIngestionReadWorkflow({ ingestion, query });
+    const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
 
     await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toBe(cause);
     expect(query.sources.getById).not.toHaveBeenCalled();
