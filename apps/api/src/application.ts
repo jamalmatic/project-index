@@ -1,16 +1,19 @@
 import type { ValidatedWriterOptions } from "@project-index/validation";
 import type { UnifiedQueryService } from "@project-index/storage";
 import type { PersistenceService } from "./persistence";
+import type { CommandService } from "./commands";
+import { createCommandService } from "./commands";
 import { toApplicationError } from "./errors";
 
 /**
- * Application-facing composition boundary for Phase 2.7.
+ * Application-facing composition boundary for Phase 2.7/2.8.
  *
  * Application services receive capabilities rather than persistence adapters.
  * The raw PostgresStorage and UnitOfWork remain behind PersistenceService.
  */
 export interface ApplicationServices {
   readonly query: UnifiedQueryService;
+  readonly commands: CommandService;
   createWriter(options?: Omit<ValidatedWriterOptions, "unitOfWork">): ReturnType<PersistenceService["createWriter"]>;
   close(): Promise<void>;
 }
@@ -50,6 +53,13 @@ const protectQueryService = (query: UnifiedQueryService): UnifiedQueryService =>
 
 export const createApplicationServices = (persistence: PersistenceService): ApplicationServices => ({
   query: protectQueryService(persistence.query),
+  commands: createCommandService(async () => {
+    try {
+      return await persistence.createWriter();
+    } catch (error) {
+      throw toApplicationError(error);
+    }
+  }),
   createWriter: async (options) => {
     try {
       return await persistence.createWriter(options);
