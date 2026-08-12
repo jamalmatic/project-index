@@ -5,9 +5,10 @@ import type { CommandService } from "./commands";
 import { createCommandService } from "./commands";
 import { IngestionService } from "@project-index/validation";
 import { toApplicationError } from "./errors";
+import { createIngestionReadWorkflow, type IngestionReadWorkflowResult } from "./ingestion-read.workflow";
 
 /**
- * Application-facing composition boundary for Phase 2.7/2.8.
+ * Application-facing composition boundary for Phase 2.7/2.8 and Phase 2.9 workflows.
  *
  * Application services receive capabilities rather than persistence adapters.
  * The raw PostgresStorage and UnitOfWork remain behind PersistenceService.
@@ -16,6 +17,9 @@ export interface ApplicationServices {
   readonly query: UnifiedQueryService;
   readonly commands: CommandService;
   readonly ingestion: Pick<IngestionService, "ingest">;
+  readonly workflow: {
+    execute(input: IngestionInput): Promise<IngestionReadWorkflowResult>;
+  };
   createWriter(options?: Omit<ValidatedWriterOptions, "unitOfWork">): ReturnType<PersistenceService["createWriter"]>;
   close(): Promise<void>;
 }
@@ -58,34 +62,43 @@ const protectIngestion = (ingestion: IngestionService): Pick<IngestionService, "
     mapQueryErrors(() => ingestion.ingest(input)) as Promise<IngestionResult>,
 });
 
-export const createApplicationServices = (persistence: PersistenceService): ApplicationServices => ({
-  query: protectQueryService(persistence.query),
-  commands: createCommandService(async () => {
+export const createApplicationServices = (persistence: PersistenceService): ApplicationServices => {
+  const ingestion = protectIngestion(new IngestionService(async () => {
     try {
       return await persistence.createWriter();
     } catch (error) {
       throw toApplicationError(error);
     }
-  }),
-  ingestion: protectIngestion(new IngestionService(async () => {
-    try {
-      return await persistence.createWriter();
-    } catch (error) {
-      throw toApplicationError(error);
-    }
-  })),
-  createWriter: async (options) => {
-    try {
-      return await persistence.createWriter(options);
-    } catch (error) {
-      throw toApplicationError(error);
-    }
-  },
-  close: async () => {
-    try {
-      await persistence.close();
-    } catch (error) {
-      throw toApplicationError(error);
-    }
-  },
-});
+  }));
+  const query = protectQueryService(persistence.query);
+  const workflow = createIngestionReadWorkflow({ ingestion, query });
+
+  return {
+    query,
+    commands: createCommandService(async () => {
+      try {
+        return await persistence.createWriter();
+      } catch (error) {
+        throw toApplicationError(error);
+      }
+    }),
+    ingestion,
+    workflow: {
+      execute: (input) => mapQueryErrors(() => workflow.execute(input)) as Promise<IngestionReadWorkflowResult>,
+    },
+    createWriter: async (options) => {
+      try {
+        return await persistence.createWriter(options);
+      } catch (error) {
+        throw toApplicationError(error);
+      }
+    },
+    close: async () => {
+      try {
+        await persistence.close();
+      } catch (error) {
+        throw toApplicationError(error);
+      }
+    },
+  };
+};
