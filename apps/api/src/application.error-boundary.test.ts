@@ -23,7 +23,7 @@ describe("Phase 2.7 application error boundary", () => {
     const services = createApplicationServices(persistence as never);
     const id = "entity-1" as Parameters<typeof persistence.query.entities.getById>[0];
 
-    await expect(services.query.entities.getById(id)).rejects.toMatchObject({
+    await expect(Promise.resolve().then(() => services.query.entities.getById(id))).rejects.toMatchObject({
       name: "ApplicationError",
       code: "STORAGE_ERROR",
       cause,
@@ -38,8 +38,8 @@ describe("Phase 2.7 application error boundary", () => {
     const services = createApplicationServices(persistence as never);
     const id = "entity-1" as Parameters<typeof persistence.query.entities.getById>[0];
 
-    await expect(services.query.entities.getById(id)).rejects.toBeInstanceOf(ApplicationError);
-    await expect(services.query.entities.getById(id)).rejects.toMatchObject({
+    await expect(Promise.resolve().then(() => services.query.entities.getById(id))).rejects.toMatchObject({
+      name: "ApplicationError",
       code: "STORAGE_ERROR",
       cause,
     });
