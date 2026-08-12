@@ -1,6 +1,7 @@
 import type { AssertionInput, EntityInput, RelationshipInput } from "@project-index/domain";
 import type { EvidenceInput, SourceInput } from "@project-index/evidence";
 import type { ValidatedWriter } from "@project-index/validation";
+import { toApplicationError } from "./errors";
 
 /** Phase 2.8 command boundary: application use-cases depend on a writer factory, not persistence. */
 export interface CommandService {
@@ -13,14 +14,22 @@ export interface CommandService {
 
 export type WriterFactory = () => Promise<ValidatedWriter>;
 
+const runCommand = async <T>(operation: () => Promise<T>): Promise<T> => {
+  try {
+    return await operation();
+  } catch (error) {
+    throw toApplicationError(error);
+  }
+};
+
 export const createCommandService = (createWriter: WriterFactory): CommandService => ({
-  createEntity: async (input) => (await createWriter()).createEntity(input),
-  createAssertion: async (input) => (await createWriter()).createAssertion(input),
-  createRelationship: async (input) => (await createWriter()).createRelationship(input),
-  createEvidence: async (input) => (await createWriter()).createEvidence(input),
-  createSource: async (input) => {
+  createEntity: (input) => runCommand(async () => (await createWriter()).createEntity(input)),
+  createAssertion: (input) => runCommand(async () => (await createWriter()).createAssertion(input)),
+  createRelationship: (input) => runCommand(async () => (await createWriter()).createRelationship(input)),
+  createEvidence: (input) => runCommand(async () => (await createWriter()).createEvidence(input)),
+  createSource: (input) => runCommand(async () => {
     const [result] = await (await createWriter()).createMany([{ kind: "source", input }]);
     if (!result) throw new Error("Source command produced no result");
     return result;
-  },
+  }),
 });
