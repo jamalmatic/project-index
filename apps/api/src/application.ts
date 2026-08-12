@@ -1,4 +1,4 @@
-import type { ValidatedWriterOptions, IngestionInput, IngestionResult, IngestionWriterFactory } from "@project-index/validation";
+import type { ValidatedWriterOptions, IngestionInput, IngestionResult } from "@project-index/validation";
 import type { UnifiedQueryService } from "@project-index/storage";
 import type { PersistenceService } from "./persistence";
 import type { CommandService } from "./commands";
