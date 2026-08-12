@@ -29,7 +29,8 @@ describe("Phase 2.8 command service", () => {
     writer.createEvidence.mockResolvedValue(evidence);
     writer.createMany.mockResolvedValue([source]);
 
-    const commands = createCommandService(writer as never);
+    const createWriter = vi.fn().mockResolvedValue(writer);
+    const commands = createCommandService(createWriter);
 
     await expect(commands.createEntity(entityInput as never)).resolves.toBe(entity);
     await expect(commands.createAssertion(assertionInput as never)).resolves.toBe(assertion);
@@ -37,6 +38,7 @@ describe("Phase 2.8 command service", () => {
     await expect(commands.createEvidence(evidenceInput as never)).resolves.toBe(evidence);
     await expect(commands.createSource(sourceInput as never)).resolves.toBe(source);
 
+    expect(createWriter).toHaveBeenCalledTimes(5);
     expect(writer.createEntity).toHaveBeenCalledWith(entityInput);
     expect(writer.createAssertion).toHaveBeenCalledWith(assertionInput);
     expect(writer.createRelationship).toHaveBeenCalledWith(relationshipInput);
@@ -45,7 +47,7 @@ describe("Phase 2.8 command service", () => {
   });
 
   it("does not expose the writer or transaction boundary", () => {
-    const commands = createCommandService(makeWriter() as never);
+    const commands = createCommandService(vi.fn() as never);
     expect(commands).not.toHaveProperty("writer");
     expect(commands).not.toHaveProperty("unitOfWork");
     expect(commands).not.toHaveProperty("commit");
