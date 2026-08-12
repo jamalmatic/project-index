@@ -1,7 +1,6 @@
 import type { AssertionInput, EntityInput, RelationshipInput } from "@project-index/domain";
 import { createProvenanceRecord, type EvidenceInput, type ProvenanceRecord, type SourceInput, type Source } from "@project-index/evidence";
 import type { Assertion, Entity, Relationship } from "@project-index/domain";
-import type { UnitOfWork } from "@project-index/storage";
 import { ValidatedWriter, type ValidatedWriteOperation } from "./writer";
 
 export interface IngestionInput {
@@ -29,9 +28,11 @@ export interface IngestionResult {
   readonly provenance: readonly ProvenanceRecord[];
 }
 
+export type IngestionWriterFactory = () => Promise<ValidatedWriter>;
+
 /** Construct, validate and persist one ingestion batch atomically. */
 export class IngestionService {
-  constructor(private readonly unitOfWork: UnitOfWork) {}
+  constructor(private readonly createWriter: IngestionWriterFactory) {}
 
   async ingest(input: IngestionInput): Promise<IngestionResult> {
     const operations: ValidatedWriteOperation[] = [
@@ -42,7 +43,7 @@ export class IngestionService {
       ...(input.evidence ?? []).map((value) => ({ kind: "evidence" as const, input: value })),
     ];
 
-    const writer = new ValidatedWriter({ unitOfWork: this.unitOfWork });
+    const writer = await this.createWriter();
     const values = await writer.createMany(operations);
     const entityCount = input.entities?.length ?? 0;
     const assertionCount = input.assertions?.length ?? 0;
