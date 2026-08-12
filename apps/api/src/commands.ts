@@ -1,10 +1,5 @@
-import type {
-  AssertionInput,
-  EntityInput,
-  EvidenceInput,
-  RelationshipInput,
-} from "@project-index/domain";
-import type { EvidenceInput as SourceEvidenceInput, SourceInput } from "@project-index/evidence";
+import type { AssertionInput, EntityInput, EvidenceInput, RelationshipInput } from "@project-index/domain";
+import type { SourceInput } from "@project-index/evidence";
 import type { ValidatedWriter } from "@project-index/validation";
 
 /** Phase 2.8 command boundary: application use-cases depend on the writer capability only. */
@@ -23,6 +18,7 @@ export const createCommandService = (writer: ValidatedWriter): CommandService =>
   createEvidence: (input) => writer.createEvidence(input),
   createSource: async (input) => {
     const [result] = await writer.createMany([{ kind: "source", input }]);
+    if (!result) throw new Error("Source command produced no result");
     return result;
   },
 });
