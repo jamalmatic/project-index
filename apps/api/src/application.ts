@@ -29,14 +29,27 @@ const mapQueryErrors = <T>(operation: () => T): T | Promise<T> => {
   }
 };
 
-export const createApplicationServices = (persistence: PersistenceService): ApplicationServices => ({
-  query: new Proxy(persistence.query, {
+const protectQueryCapability = <T extends object>(capability: T): T =>
+  new Proxy(capability, {
     get(target, property, receiver) {
       const value = Reflect.get(target, property, receiver);
       if (typeof value !== "function") return value;
       return (...args: unknown[]) => mapQueryErrors(() => value.apply(target, args));
     },
-  }) as UnifiedQueryService,
+  });
+
+const protectQueryService = (query: UnifiedQueryService): UnifiedQueryService =>
+  new Proxy(query, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver);
+      if (typeof value === "function") return (...args: unknown[]) => mapQueryErrors(() => value.apply(target, args));
+      if (value && typeof value === "object") return protectQueryCapability(value);
+      return value;
+    },
+  }) as UnifiedQueryService;
+
+export const createApplicationServices = (persistence: PersistenceService): ApplicationServices => ({
+  query: protectQueryService(persistence.query),
   createWriter: async (options) => {
     try {
       return await persistence.createWriter(options);
