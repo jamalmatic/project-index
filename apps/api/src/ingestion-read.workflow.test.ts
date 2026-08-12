@@ -34,7 +34,17 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
     expect(query.relationships.getById).toHaveBeenCalledWith("relationship-1");
     expect(query.evidence.getById).toHaveBeenCalledWith("evidence-1");
     expect(query.provenance.getById).toHaveBeenCalledWith("provenance-1");
-    expect(output).toEqual({ ingestion: result, readBack: result });
+    expect(output).toEqual({
+      ingestion: result,
+      readBack: {
+        source: result.source,
+        entities: [result.entities[0]],
+        assertions: [result.assertions[0]],
+        relationships: [result.relationships[0]],
+        evidence: [result.evidence[0]],
+        provenance: [result.provenance[0]],
+      },
+    });
   });
 
   it("does not expose writer or transaction capabilities", () => {
