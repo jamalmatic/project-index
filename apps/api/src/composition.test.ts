@@ -10,8 +10,8 @@ vi.mock("./persistence", async () => {
   };
 });
 
-describe("Phase 2.7 application composition root", () => {
-  it("constructs application capabilities from persistence configuration", () => {
+describe("Phase 2.8 application composition root", () => {
+  it("constructs the complete application capability set without persistence escape hatches", () => {
     const close = vi.fn();
     const query = {};
     const createWriter = vi.fn();
@@ -26,10 +26,26 @@ describe("Phase 2.7 application composition root", () => {
     expect(persistenceModule.createPersistenceService).toHaveBeenCalledWith({
       databaseUrl: "postgres://example",
     });
+    expect(Object.keys(application).sort()).toEqual([
+      "close",
+      "commands",
+      "createWriter",
+      "ingestion",
+      "query",
+    ]);
     expect(application.query).toEqual(query);
+    expect(application.ingestion).toHaveProperty("ingest");
+    expect(Object.keys(application.ingestion)).toEqual(["ingest"]);
+    expect(application.ingestion).not.toHaveProperty("writer");
+    expect(application.ingestion).not.toHaveProperty("unitOfWork");
+    expect(application.ingestion).not.toHaveProperty("storage");
+    expect(application.ingestion).not.toHaveProperty("pool");
+    expect(application.ingestion).not.toHaveProperty("commit");
+    expect(application.ingestion).not.toHaveProperty("rollback");
     expect(application.createWriter).toBeDefined();
     expect(application.close).toBeDefined();
     expect(application).not.toHaveProperty("storage");
     expect(application).not.toHaveProperty("unitOfWork");
+    expect(application).not.toHaveProperty("pool");
   });
 });
