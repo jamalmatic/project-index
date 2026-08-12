@@ -1,13 +1,15 @@
 import { assertionId } from "@project-index/core";
 import { sourceId } from "@project-index/evidence";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createMemoryUnitOfWork } from "@project-index/storage";
-import { IngestionService, ValidationError } from "./index";
+import { IngestionService, ValidationError, ValidatedWriter } from "./index";
 
 describe("IngestionService", () => {
+  const createWriter = () => new ValidatedWriter({ unitOfWork: createMemoryUnitOfWork() });
+
   it("persists a complete batch atomically and preserves provenance in the result", async () => {
     const unitOfWork = createMemoryUnitOfWork();
-    const service = new IngestionService(unitOfWork);
+    const service = new IngestionService(async () => new ValidatedWriter({ unitOfWork }));
 
     const result = await service.ingest({
       source: { id: "source-1", kind: "repository", uri: "file:///repo" },
@@ -41,7 +43,7 @@ describe("IngestionService", () => {
 
   it("rolls back the batch when referential validation fails", async () => {
     const unitOfWork = createMemoryUnitOfWork();
-    const service = new IngestionService(unitOfWork);
+    const service = new IngestionService(async () => new ValidatedWriter({ unitOfWork }));
 
     await expect(service.ingest({
       source: { id: "source-2", kind: "repository" },
@@ -52,5 +54,15 @@ describe("IngestionService", () => {
 
     expect(await unitOfWork.sources.getById(sourceId("source-2"))).toBeNull();
     expect(await unitOfWork.assertions.getById(assertionId("assertion-2"))).toBeNull();
+  });
+
+  it("accepts a writer factory and does not construct the writer until ingest", async () => {
+    const writer = createWriter();
+    const createWriterMock = vi.fn().mockResolvedValue(writer);
+    const service = new IngestionService(createWriterMock);
+
+    expect(createWriterMock).not.toHaveBeenCalled();
+    await service.ingest({ source: { id: "source-3", kind: "repository" } });
+    expect(createWriterMock).toHaveBeenCalledTimes(1);
   });
 });
