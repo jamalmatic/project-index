@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApplicationServices } from "./application";
-import { ApplicationError } from "./errors";
 
 const makePersistence = () => ({
   query: {
@@ -13,7 +12,7 @@ const makePersistence = () => ({
 });
 
 describe("Phase 2.7 application error boundary", () => {
-  it("maps synchronous query failures to ApplicationError", async () => {
+  it("maps synchronous query failures to an application error", async () => {
     const persistence = makePersistence();
     const cause = new Error("connection refused");
     persistence.query.entities.getById.mockImplementation(() => {
@@ -23,14 +22,15 @@ describe("Phase 2.7 application error boundary", () => {
     const services = createApplicationServices(persistence as never);
     const id = "entity-1" as Parameters<typeof persistence.query.entities.getById>[0];
 
-    await expect(Promise.resolve().then(() => services.query.entities.getById(id))).rejects.toMatchObject({
+    const result = Promise.resolve().then(() => services.query.entities.getById(id));
+    await expect(result).rejects.toMatchObject({
       name: "ApplicationError",
       code: "STORAGE_ERROR",
       cause,
     });
   });
 
-  it("maps asynchronous query failures to ApplicationError", async () => {
+  it("maps asynchronous query failures to an application error", async () => {
     const persistence = makePersistence();
     const cause = new Error("database unavailable");
     persistence.query.entities.getById.mockRejectedValue(cause);
@@ -38,7 +38,8 @@ describe("Phase 2.7 application error boundary", () => {
     const services = createApplicationServices(persistence as never);
     const id = "entity-1" as Parameters<typeof persistence.query.entities.getById>[0];
 
-    await expect(Promise.resolve().then(() => services.query.entities.getById(id))).rejects.toMatchObject({
+    const result = Promise.resolve().then(() => services.query.entities.getById(id));
+    await expect(result).rejects.toMatchObject({
       name: "ApplicationError",
       code: "STORAGE_ERROR",
       cause,
