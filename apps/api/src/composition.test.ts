@@ -10,7 +10,7 @@ vi.mock("./persistence", async () => {
   };
 });
 
-describe("Phase 2.8 application composition root", () => {
+describe("Phase 2.9 application composition root", () => {
   it("constructs the complete application capability set without persistence escape hatches", () => {
     const close = vi.fn();
     const query = {};
@@ -32,6 +32,7 @@ describe("Phase 2.8 application composition root", () => {
       "createWriter",
       "ingestion",
       "query",
+      "workflow",
     ]);
     expect(application.query).toEqual(query);
     expect(application.ingestion).toHaveProperty("ingest");
@@ -42,6 +43,14 @@ describe("Phase 2.8 application composition root", () => {
     expect(application.ingestion).not.toHaveProperty("pool");
     expect(application.ingestion).not.toHaveProperty("commit");
     expect(application.ingestion).not.toHaveProperty("rollback");
+    expect(application.workflow).toHaveProperty("execute");
+    expect(Object.keys(application.workflow)).toEqual(["execute"]);
+    expect(application.workflow).not.toHaveProperty("writer");
+    expect(application.workflow).not.toHaveProperty("unitOfWork");
+    expect(application.workflow).not.toHaveProperty("storage");
+    expect(application.workflow).not.toHaveProperty("pool");
+    expect(application.workflow).not.toHaveProperty("commit");
+    expect(application.workflow).not.toHaveProperty("rollback");
     expect(application.createWriter).toBeDefined();
     expect(application.close).toBeDefined();
     expect(application).not.toHaveProperty("storage");
