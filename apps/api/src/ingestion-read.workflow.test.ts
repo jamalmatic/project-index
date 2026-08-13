@@ -28,12 +28,6 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
     const output = await workflow.execute(input);
 
     expect(ingestion.ingest).toHaveBeenCalledWith(input);
-    expect(query.sources.getById).toHaveBeenCalledWith("source-1");
-    expect(query.entities.getById).toHaveBeenCalledWith("entity-1");
-    expect(query.assertions.getById).toHaveBeenCalledWith("assertion-1");
-    expect(query.relationships.getById).toHaveBeenCalledWith("relationship-1");
-    expect(query.evidence.getById).toHaveBeenCalledWith("evidence-1");
-    expect(query.provenance.getById).toHaveBeenCalledWith("provenance-1");
     expect(output).toEqual({
       ingestion: result,
       readBack: {
@@ -47,19 +41,35 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
     });
   });
 
-  it("does not expose writer or transaction capabilities", () => {
-    const workflow = createIngestionReadWorkflow({
-      ingestion: { ingest: vi.fn() },
-      query: {} as never,
-    });
+  it("returns a stable application result shape without persistence or transaction capabilities", async () => {
+    const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
+    const query = {
+      sources: { getById: vi.fn().mockResolvedValue(result.source) },
+      entities: { getById: vi.fn().mockResolvedValue(result.entities[0]) },
+      assertions: { getById: vi.fn().mockResolvedValue(result.assertions[0]) },
+      relationships: { getById: vi.fn().mockResolvedValue(result.relationships[0]) },
+      evidence: { getById: vi.fn().mockResolvedValue(result.evidence[0]) },
+      provenance: { getById: vi.fn().mockResolvedValue(result.provenance[0]) },
+    };
 
-    expect(Object.keys(workflow)).toEqual(["execute"]);
-    expect(workflow).not.toHaveProperty("writer");
-    expect(workflow).not.toHaveProperty("unitOfWork");
-    expect(workflow).not.toHaveProperty("storage");
-    expect(workflow).not.toHaveProperty("pool");
-    expect(workflow).not.toHaveProperty("commit");
-    expect(workflow).not.toHaveProperty("rollback");
+    const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
+    const output = await workflow.execute({ source: { id: "source-1", kind: "repository" } } as never);
+
+    expect(Object.keys(output).sort()).toEqual(["ingestion", "readBack"]);
+    expect(Object.keys(output.readBack).sort()).toEqual([
+      "assertions",
+      "entities",
+      "evidence",
+      "provenance",
+      "relationships",
+      "source",
+    ]);
+    expect(output).not.toHaveProperty("storage");
+    expect(output).not.toHaveProperty("pool");
+    expect(output).not.toHaveProperty("unitOfWork");
+    expect(output).not.toHaveProperty("transaction");
+    expect(output).not.toHaveProperty("commit");
+    expect(output).not.toHaveProperty("rollback");
   });
 
   it("maps ingestion failures to the application error boundary without querying", async () => {
