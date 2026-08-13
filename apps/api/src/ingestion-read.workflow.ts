@@ -8,18 +8,23 @@ export interface IngestionReadWorkflowDependencies {
 }
 
 export interface IngestionReadBack {
-  readonly source: IngestionResult["source"] | null;
-  readonly entities: readonly (IngestionResult["entities"][number] | null)[];
-  readonly assertions: readonly (IngestionResult["assertions"][number] | null)[];
-  readonly relationships: readonly (IngestionResult["relationships"][number] | null)[];
-  readonly evidence: readonly (IngestionResult["evidence"][number] | null)[];
-  readonly provenance: readonly (IngestionResult["provenance"][number] | null)[];
+  readonly source: IngestionResult["source"];
+  readonly entities: readonly IngestionResult["entities"][number][];
+  readonly assertions: readonly IngestionResult["assertions"][number][];
+  readonly relationships: readonly IngestionResult["relationships"][number][];
+  readonly evidence: readonly IngestionResult["evidence"][number][];
+  readonly provenance: readonly IngestionResult["provenance"][number][];
 }
 
 export interface IngestionReadWorkflowResult {
   readonly ingestion: IngestionResult;
   readonly readBack: IngestionReadBack;
 }
+
+const requireReadBack = <T>(value: T | null, kind: string, id: string): T => {
+  if (value !== null) return value;
+  throw new Error(`Committed ${kind} ${id} was not found during workflow read-back`);
+};
 
 /**
  * Phase 2.9.1 application workflow: perform a validated ingestion and then
@@ -29,6 +34,10 @@ export interface IngestionReadWorkflowResult {
  * Phase 2.9.2 locks the workflow error boundary: failures from either the
  * ingestion phase or the committed read-back phase are classified as
  * ApplicationError while preserving an existing ApplicationError unchanged.
+ *
+ * Phase 2.9.4 locks consistency semantics: every record returned by ingestion
+ * must be present in committed read-back. A missing record is a storage
+ * consistency failure rather than a nullable successful result.
  */
 export const createIngestionReadWorkflow = ({ ingestion, query }: IngestionReadWorkflowDependencies) => ({
   async execute(input: IngestionInput): Promise<IngestionReadWorkflowResult> {
@@ -51,7 +60,14 @@ export const createIngestionReadWorkflow = ({ ingestion, query }: IngestionReadW
 
       return {
         ingestion: result,
-        readBack: { source, entities, assertions, relationships, evidence, provenance },
+        readBack: {
+          source: requireReadBack(source, "source", result.source.id),
+          entities: result.entities.map(({ id }, index) => requireReadBack(entities[index], "entity", id)),
+          assertions: result.assertions.map(({ id }, index) => requireReadBack(assertions[index], "assertion", id)),
+          relationships: result.relationships.map(({ id }, index) => requireReadBack(relationships[index], "relationship", id)),
+          evidence: result.evidence.map(({ id }, index) => requireReadBack(evidence[index], "evidence", id)),
+          provenance: result.provenance.map(({ id }, index) => requireReadBack(provenance[index], "provenance", id)),
+        },
       };
     } catch (error) {
       throw toApplicationError(error);
