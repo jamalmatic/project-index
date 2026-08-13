@@ -21,8 +21,8 @@ export interface IngestionReadWorkflowResult {
   readonly readBack: IngestionReadBack;
 }
 
-const requireReadBack = <T>(value: T | null, kind: string, id: string): T => {
-  if (value !== null) return value;
+const requireReadBack = <T>(value: T | null | undefined, kind: string, id: string): T => {
+  if (value != null) return value;
   throw new Error(`Committed ${kind} ${id} was not found during workflow read-back`);
 };
 
