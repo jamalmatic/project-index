@@ -67,10 +67,11 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
     expect(output).not.toHaveProperty("rollback");
   });
 
-  it("treats a missing committed source as a storage consistency error", async () => {
+  it("fails the whole workflow when any child read-back rejects", async () => {
     const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
     const query = makeQuery();
-    query.sources.getById.mockResolvedValue(null);
+    const cause = new Error("assertion read failed");
+    query.assertions.getById.mockRejectedValue(cause);
 
     const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
 
@@ -79,11 +80,12 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
     ).rejects.toMatchObject({
       name: "ApplicationError",
       code: "STORAGE_ERROR",
-      message: "Committed source source-1 was not found during workflow read-back",
+      message: "assertion read failed",
+      cause,
     });
   });
 
-  it("treats a missing committed child record as a storage consistency error", async () => {
+  it("fails the whole workflow when any child read-back is missing", async () => {
     const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
     const query = makeQuery();
     query.entities.getById.mockResolvedValue(null);
