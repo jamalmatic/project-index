@@ -67,6 +67,55 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
     expect(output).not.toHaveProperty("rollback");
   });
 
+  it("starts all independent read-back branches before any branch resolves", async () => {
+    const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
+    const query = makeQuery();
+    const gates = Array.from({ length: 6 }, () => {
+      let resolve!: (value: unknown) => void;
+      const promise = new Promise((res) => {
+        resolve = res;
+      });
+      return { promise, resolve };
+    });
+
+    query.sources.getById.mockReturnValue(gates[0].promise);
+    query.entities.getById.mockReturnValue(gates[1].promise);
+    query.assertions.getById.mockReturnValue(gates[2].promise);
+    query.relationships.getById.mockReturnValue(gates[3].promise);
+    query.evidence.getById.mockReturnValue(gates[4].promise);
+    query.provenance.getById.mockReturnValue(gates[5].promise);
+
+    const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
+    const execution = workflow.execute({ source: { id: "source-1", kind: "repository" } } as never);
+
+    await vi.waitFor(() => {
+      expect(query.sources.getById).toHaveBeenCalledWith("source-1");
+      expect(query.entities.getById).toHaveBeenCalledWith("entity-1");
+      expect(query.assertions.getById).toHaveBeenCalledWith("assertion-1");
+      expect(query.relationships.getById).toHaveBeenCalledWith("relationship-1");
+      expect(query.evidence.getById).toHaveBeenCalledWith("evidence-1");
+      expect(query.provenance.getById).toHaveBeenCalledWith("provenance-1");
+    });
+
+    gates.forEach(({ resolve }, index) => {
+      resolve(
+        index === 0
+          ? result.source
+          : index === 1
+            ? result.entities[0]
+            : index === 2
+              ? result.assertions[0]
+              : index === 3
+                ? result.relationships[0]
+                : index === 4
+                  ? result.evidence[0]
+                  : result.provenance[0],
+      );
+    });
+
+    await expect(execution).resolves.toBeDefined();
+  });
+
   it("fails the whole workflow when any child read-back rejects", async () => {
     const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
     const query = makeQuery();
