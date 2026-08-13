@@ -77,13 +77,14 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
       });
       return { promise, resolve };
     });
+    const [sourceGate, entityGate, assertionGate, relationshipGate, evidenceGate, provenanceGate] = gates;
 
-    query.sources.getById.mockReturnValue(gates[0].promise);
-    query.entities.getById.mockReturnValue(gates[1].promise);
-    query.assertions.getById.mockReturnValue(gates[2].promise);
-    query.relationships.getById.mockReturnValue(gates[3].promise);
-    query.evidence.getById.mockReturnValue(gates[4].promise);
-    query.provenance.getById.mockReturnValue(gates[5].promise);
+    query.sources.getById.mockReturnValue(sourceGate.promise);
+    query.entities.getById.mockReturnValue(entityGate.promise);
+    query.assertions.getById.mockReturnValue(assertionGate.promise);
+    query.relationships.getById.mockReturnValue(relationshipGate.promise);
+    query.evidence.getById.mockReturnValue(evidenceGate.promise);
+    query.provenance.getById.mockReturnValue(provenanceGate.promise);
 
     const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
     const execution = workflow.execute({ source: { id: "source-1", kind: "repository" } } as never);
@@ -97,21 +98,12 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
       expect(query.provenance.getById).toHaveBeenCalledWith("provenance-1");
     });
 
-    gates.forEach(({ resolve }, index) => {
-      resolve(
-        index === 0
-          ? result.source
-          : index === 1
-            ? result.entities[0]
-            : index === 2
-              ? result.assertions[0]
-              : index === 3
-                ? result.relationships[0]
-                : index === 4
-                  ? result.evidence[0]
-                  : result.provenance[0],
-      );
-    });
+    sourceGate.resolve(result.source);
+    entityGate.resolve(result.entities[0]);
+    assertionGate.resolve(result.assertions[0]);
+    relationshipGate.resolve(result.relationships[0]);
+    evidenceGate.resolve(result.evidence[0]);
+    provenanceGate.resolve(result.provenance[0]);
 
     await expect(execution).resolves.toBeDefined();
   });
