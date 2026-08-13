@@ -62,7 +62,7 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
     expect(workflow).not.toHaveProperty("rollback");
   });
 
-  it("does not query when ingestion fails", async () => {
+  it("maps ingestion failures to the application error boundary without querying", async () => {
     const cause = new Error("validation failed");
     const ingestion = { ingest: vi.fn().mockRejectedValue(cause) };
     const query = {
@@ -76,7 +76,13 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
 
     const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
 
-    await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toBe(cause);
+    await expect(
+      workflow.execute({ source: { id: "source-1", kind: "repository" } } as never),
+    ).rejects.toMatchObject({
+      name: "ApplicationError",
+      code: "STORAGE_ERROR",
+      message: "validation failed",
+    });
     expect(query.sources.getById).not.toHaveBeenCalled();
   });
 });
