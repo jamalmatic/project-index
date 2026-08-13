@@ -12,16 +12,18 @@ const result = {
 } as unknown as IngestionResult;
 
 describe("Phase 2.9.1 ingestion read-back workflow", () => {
+  const makeQuery = () => ({
+    sources: { getById: vi.fn().mockResolvedValue(result.source) },
+    entities: { getById: vi.fn().mockResolvedValue(result.entities[0]) },
+    assertions: { getById: vi.fn().mockResolvedValue(result.assertions[0]) },
+    relationships: { getById: vi.fn().mockResolvedValue(result.relationships[0]) },
+    evidence: { getById: vi.fn().mockResolvedValue(result.evidence[0]) },
+    provenance: { getById: vi.fn().mockResolvedValue(result.provenance[0]) },
+  });
+
   it("performs ingestion first and reads the committed records back through unified query", async () => {
     const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
-    const query = {
-      sources: { getById: vi.fn().mockResolvedValue(result.source) },
-      entities: { getById: vi.fn().mockResolvedValue(result.entities[0]) },
-      assertions: { getById: vi.fn().mockResolvedValue(result.assertions[0]) },
-      relationships: { getById: vi.fn().mockResolvedValue(result.relationships[0]) },
-      evidence: { getById: vi.fn().mockResolvedValue(result.evidence[0]) },
-      provenance: { getById: vi.fn().mockResolvedValue(result.provenance[0]) },
-    };
+    const query = makeQuery();
 
     const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
     const input = { source: { id: "source-1", kind: "repository" } } as never;
@@ -43,14 +45,7 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
 
   it("returns a stable application result shape without persistence or transaction capabilities", async () => {
     const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
-    const query = {
-      sources: { getById: vi.fn().mockResolvedValue(result.source) },
-      entities: { getById: vi.fn().mockResolvedValue(result.entities[0]) },
-      assertions: { getById: vi.fn().mockResolvedValue(result.assertions[0]) },
-      relationships: { getById: vi.fn().mockResolvedValue(result.relationships[0]) },
-      evidence: { getById: vi.fn().mockResolvedValue(result.evidence[0]) },
-      provenance: { getById: vi.fn().mockResolvedValue(result.provenance[0]) },
-    };
+    const query = makeQuery();
 
     const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
     const output = await workflow.execute({ source: { id: "source-1", kind: "repository" } } as never);
@@ -70,6 +65,38 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
     expect(output).not.toHaveProperty("transaction");
     expect(output).not.toHaveProperty("commit");
     expect(output).not.toHaveProperty("rollback");
+  });
+
+  it("treats a missing committed source as a storage consistency error", async () => {
+    const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
+    const query = makeQuery();
+    query.sources.getById.mockResolvedValue(null);
+
+    const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
+
+    await expect(
+      workflow.execute({ source: { id: "source-1", kind: "repository" } } as never),
+    ).rejects.toMatchObject({
+      name: "ApplicationError",
+      code: "STORAGE_ERROR",
+      message: "Committed source source-1 was not found during workflow read-back",
+    });
+  });
+
+  it("treats a missing committed child record as a storage consistency error", async () => {
+    const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
+    const query = makeQuery();
+    query.entities.getById.mockResolvedValue(null);
+
+    const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
+
+    await expect(
+      workflow.execute({ source: { id: "source-1", kind: "repository" } } as never),
+    ).rejects.toMatchObject({
+      name: "ApplicationError",
+      code: "STORAGE_ERROR",
+      message: "Committed entity entity-1 was not found during workflow read-back",
+    });
   });
 
   it("maps ingestion failures to the application error boundary without querying", async () => {
