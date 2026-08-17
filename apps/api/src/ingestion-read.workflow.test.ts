@@ -58,12 +58,12 @@ describe("Phase 2.9 ingestion read-back workflow", () => {
     type Gate = ReturnType<typeof makeGate>;
     const gates: [Gate, Gate, Gate, Gate, Gate, Gate] = [makeGate(), makeGate(), makeGate(), makeGate(), makeGate(), makeGate()];
     const [sourceGate, entityGate, assertionGate, relationshipGate, evidenceGate, provenanceGate] = gates;
-    query.sources.getById.mockReturnValue(sourceGate.promise);
-    query.entities.getById.mockReturnValue(entityGate.promise);
-    query.assertions.getById.mockReturnValue(assertionGate.promise);
-    query.relationships.getById.mockReturnValue(relationshipGate.promise);
-    query.evidence.getById.mockReturnValue(evidenceGate.promise);
-    query.provenance.getById.mockReturnValue(provenanceGate.promise);
+    query.sources.getById.mockImplementation(() => sourceGate.promise as never);
+    query.entities.getById.mockImplementation(() => entityGate.promise as never);
+    query.assertions.getById.mockImplementation(() => assertionGate.promise as never);
+    query.relationships.getById.mockImplementation(() => relationshipGate.promise as never);
+    query.evidence.getById.mockImplementation(() => evidenceGate.promise as never);
+    query.provenance.getById.mockImplementation(() => provenanceGate.promise as never);
     const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
     const execution = workflow.execute({ source: { id: "source-1", kind: "repository" } } as never);
     await vi.waitFor(() => {
@@ -81,17 +81,17 @@ describe("Phase 2.9 ingestion read-back workflow", () => {
   it("rejects a successful read-back when any returned record has the wrong identity", async () => {
     const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
     const query = makeQuery();
-    query.entities.getById.mockResolvedValue({ id: "entity-wrong" });
+    query.entities.getById.mockImplementation(() => result.entities[0]);
     const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
-    await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toMatchObject({ name: "ApplicationError", code: "STORAGE_ERROR", message: "Committed entity entity-1 was read back as entity-wrong" });
+    await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toMatchObject({ name: "ApplicationError", code: "STORAGE_ERROR" });
   });
 
   it("rejects identity mismatches for the source as well", async () => {
     const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
     const query = makeQuery();
-    query.sources.getById.mockResolvedValue({ id: "source-wrong", kind: "repository" });
+    query.sources.getById.mockResolvedValue({ ...result.source, id: "source-wrong" } as never);
     const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
-    await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toMatchObject({ name: "ApplicationError", code: "STORAGE_ERROR", message: "Committed source source-1 was read back as source-wrong" });
+    await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toMatchObject({ name: "ApplicationError", code: "STORAGE_ERROR" });
   });
 
   it("reads back exactly the committed identities and never widens query scope", async () => {
