@@ -82,6 +82,30 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
     await expect(execution).resolves.toBeDefined();
   });
 
+  it("rejects a successful read-back when any returned record has the wrong identity", async () => {
+    const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
+    const query = makeQuery();
+    query.entities.getById.mockResolvedValue({ id: "entity-wrong" });
+    const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
+    await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toMatchObject({
+      name: "ApplicationError",
+      code: "STORAGE_ERROR",
+      message: "Committed entity entity-1 was read back as entity-wrong",
+    });
+  });
+
+  it("rejects identity mismatches for the source as well as collection records", async () => {
+    const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
+    const query = makeQuery();
+    query.sources.getById.mockResolvedValue({ id: "source-wrong", kind: "repository" });
+    const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
+    await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toMatchObject({
+      name: "ApplicationError",
+      code: "STORAGE_ERROR",
+      message: "Committed source source-1 was read back as source-wrong",
+    });
+  });
+
   it("fails the whole workflow when any child read-back rejects", async () => {
     const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
     const query = makeQuery();
