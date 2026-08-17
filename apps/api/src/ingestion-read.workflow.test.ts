@@ -87,11 +87,7 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
     const query = makeQuery();
     query.entities.getById.mockResolvedValue({ id: "entity-wrong" });
     const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
-    await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toMatchObject({
-      name: "ApplicationError",
-      code: "STORAGE_ERROR",
-      message: "Committed entity entity-1 was read back as entity-wrong",
-    });
+    await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toMatchObject({ name: "ApplicationError", code: "STORAGE_ERROR", message: "Committed entity entity-1 was read back as entity-wrong" });
   });
 
   it("rejects identity mismatches for the source as well as collection records", async () => {
@@ -99,11 +95,28 @@ describe("Phase 2.9.1 ingestion read-back workflow", () => {
     const query = makeQuery();
     query.sources.getById.mockResolvedValue({ id: "source-wrong", kind: "repository" });
     const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
-    await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toMatchObject({
-      name: "ApplicationError",
-      code: "STORAGE_ERROR",
-      message: "Committed source source-1 was read back as source-wrong",
-    });
+    await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toMatchObject({ name: "ApplicationError", code: "STORAGE_ERROR", message: "Committed source source-1 was read back as source-wrong" });
+  });
+
+  it("reads back exactly the committed identities and never widens the query scope", async () => {
+    const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
+    const query = makeQuery();
+    const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
+
+    await workflow.execute({ source: { id: "input-source-that-must-not-be-queried", kind: "repository" } } as never);
+
+    expect(query.sources.getById).toHaveBeenCalledTimes(1);
+    expect(query.sources.getById).toHaveBeenLastCalledWith("source-1");
+    expect(query.entities.getById).toHaveBeenCalledTimes(1);
+    expect(query.entities.getById).toHaveBeenLastCalledWith("entity-1");
+    expect(query.assertions.getById).toHaveBeenCalledTimes(1);
+    expect(query.assertions.getById).toHaveBeenLastCalledWith("assertion-1");
+    expect(query.relationships.getById).toHaveBeenCalledTimes(1);
+    expect(query.relationships.getById).toHaveBeenLastCalledWith("relationship-1");
+    expect(query.evidence.getById).toHaveBeenCalledTimes(1);
+    expect(query.evidence.getById).toHaveBeenLastCalledWith("evidence-1");
+    expect(query.provenance.getById).toHaveBeenCalledTimes(1);
+    expect(query.provenance.getById).toHaveBeenLastCalledWith("provenance-1");
   });
 
   it("fails the whole workflow when any child read-back rejects", async () => {
