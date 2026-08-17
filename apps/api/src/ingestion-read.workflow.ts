@@ -52,6 +52,11 @@ const requireReadBack = <T extends { readonly id: string }>(value: T | null | un
  * exclusively from the identities returned by the successful ingestion result.
  * The workflow does not query input-only identities or perform opportunistic
  * extra reads outside that committed result set.
+ *
+ * Phase 2.9.9 locks result-shape consistency: collection read-back is assembled
+ * from the same committed identity sequence used to issue the queries. Promise
+ * concurrency may resolve records in any order internally, but the application
+ * result preserves committed ordering and cardinality at the workflow boundary.
  */
 export const createIngestionReadWorkflow = ({ ingestion, query }: IngestionReadWorkflowDependencies) => ({
   async execute(input: IngestionInput): Promise<IngestionReadWorkflowResult> {
