@@ -1,0 +1,1 @@
+// Phase 2.9.10 implementation reference: the canonical workflow snapshots committed IDs immediately after ingestion and uses those immutable ID arrays for all query planning and result assembly. See ingestion-read.workflow.ts.
