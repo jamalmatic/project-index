@@ -69,12 +69,22 @@ describe("Phase 2.9 ingestion read-back workflow", () => {
     await vi.waitFor(() => {
       expect(query.sources.getById).toHaveBeenCalledWith("source-1");
       expect(query.entities.getById).toHaveBeenCalledWith("entity-1");
+      expect(query.entities.getById).toHaveBeenCalledWith("entity-2");
       expect(query.assertions.getById).toHaveBeenCalledWith("assertion-1");
+      expect(query.assertions.getById).toHaveBeenCalledWith("assertion-2");
       expect(query.relationships.getById).toHaveBeenCalledWith("relationship-1");
+      expect(query.relationships.getById).toHaveBeenCalledWith("relationship-2");
       expect(query.evidence.getById).toHaveBeenCalledWith("evidence-1");
+      expect(query.evidence.getById).toHaveBeenCalledWith("evidence-2");
       expect(query.provenance.getById).toHaveBeenCalledWith("provenance-1");
+      expect(query.provenance.getById).toHaveBeenCalledWith("provenance-2");
     });
-    sourceGate.resolve(result.source); entityGate.resolve(result.entities[0]); assertionGate.resolve(result.assertions[0]); relationshipGate.resolve(result.relationships[0]); evidenceGate.resolve(result.evidence[0]); provenanceGate.resolve(result.provenance[0]);
+    sourceGate.resolve(result.source);
+    entityGate.resolve(result.entities[0]);
+    assertionGate.resolve(result.assertions[0]);
+    relationshipGate.resolve(result.relationships[0]);
+    evidenceGate.resolve(result.evidence[0]);
+    provenanceGate.resolve(result.provenance[0]);
     await expect(execution).resolves.toBeDefined();
   });
 
@@ -89,7 +99,7 @@ describe("Phase 2.9 ingestion read-back workflow", () => {
   it("rejects identity mismatches for the source as well", async () => {
     const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
     const query = makeQuery();
-    query.sources.getById.mockResolvedValue({ ...result.source, id: "source-wrong" } as never);
+    query.sources.getById.mockResolvedValue({ id: "source-wrong", kind: "repository" });
     const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
     await expect(workflow.execute({ source: { id: "source-1", kind: "repository" } } as never)).rejects.toMatchObject({ name: "ApplicationError", code: "STORAGE_ERROR" });
   });
