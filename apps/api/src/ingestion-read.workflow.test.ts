@@ -55,15 +55,20 @@ describe("Phase 2.9 ingestion read-back workflow", () => {
     const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
     const query = makeQuery();
     function makeGate() { let resolve!: (value: unknown) => void; const promise = new Promise((res) => { resolve = res; }); return { promise, resolve }; }
-    type Gate = ReturnType<typeof makeGate>;
-    const gates: [Gate, Gate, Gate, Gate, Gate, Gate] = [makeGate(), makeGate(), makeGate(), makeGate(), makeGate(), makeGate()];
-    const [sourceGate, entityGate, assertionGate, relationshipGate, evidenceGate, provenanceGate] = gates;
-    query.sources.getById.mockImplementation(() => sourceGate.promise as never);
-    query.entities.getById.mockImplementation(() => entityGate.promise as never);
-    query.assertions.getById.mockImplementation(() => assertionGate.promise as never);
-    query.relationships.getById.mockImplementation(() => relationshipGate.promise as never);
-    query.evidence.getById.mockImplementation(() => evidenceGate.promise as never);
-    query.provenance.getById.mockImplementation(() => provenanceGate.promise as never);
+    const gates = {
+      source: makeGate(),
+      entity1: makeGate(), entity2: makeGate(),
+      assertion1: makeGate(), assertion2: makeGate(),
+      relationship1: makeGate(), relationship2: makeGate(),
+      evidence1: makeGate(), evidence2: makeGate(),
+      provenance1: makeGate(), provenance2: makeGate(),
+    };
+    query.sources.getById.mockImplementation(() => gates.source.promise as never);
+    query.entities.getById.mockImplementation((id: string) => (id === "entity-1" ? gates.entity1.promise : gates.entity2.promise) as never);
+    query.assertions.getById.mockImplementation((id: string) => (id === "assertion-1" ? gates.assertion1.promise : gates.assertion2.promise) as never);
+    query.relationships.getById.mockImplementation((id: string) => (id === "relationship-1" ? gates.relationship1.promise : gates.relationship2.promise) as never);
+    query.evidence.getById.mockImplementation((id: string) => (id === "evidence-1" ? gates.evidence1.promise : gates.evidence2.promise) as never);
+    query.provenance.getById.mockImplementation((id: string) => (id === "provenance-1" ? gates.provenance1.promise : gates.provenance2.promise) as never);
     const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
     const execution = workflow.execute({ source: { id: "source-1", kind: "repository" } } as never);
     await vi.waitFor(() => {
@@ -79,12 +84,12 @@ describe("Phase 2.9 ingestion read-back workflow", () => {
       expect(query.provenance.getById).toHaveBeenCalledWith("provenance-1");
       expect(query.provenance.getById).toHaveBeenCalledWith("provenance-2");
     });
-    sourceGate.resolve(result.source);
-    entityGate.resolve(result.entities[0]);
-    assertionGate.resolve(result.assertions[0]);
-    relationshipGate.resolve(result.relationships[0]);
-    evidenceGate.resolve(result.evidence[0]);
-    provenanceGate.resolve(result.provenance[0]);
+    gates.source.resolve(result.source);
+    gates.entity1.resolve(result.entities[0]); gates.entity2.resolve(result.entities[1]);
+    gates.assertion1.resolve(result.assertions[0]); gates.assertion2.resolve(result.assertions[1]);
+    gates.relationship1.resolve(result.relationships[0]); gates.relationship2.resolve(result.relationships[1]);
+    gates.evidence1.resolve(result.evidence[0]); gates.evidence2.resolve(result.evidence[1]);
+    gates.provenance1.resolve(result.provenance[0]); gates.provenance2.resolve(result.provenance[1]);
     await expect(execution).resolves.toBeDefined();
   });
 
