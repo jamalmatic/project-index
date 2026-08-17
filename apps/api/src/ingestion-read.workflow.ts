@@ -47,6 +47,11 @@ const requireReadBack = <T extends { readonly id: string }>(value: T | null | un
  * Phase 2.9.7 locks identity consistency: a successful read-back must return
  * the same record identity requested from the committed result, not merely a
  * non-null record at the expected array position.
+ *
+ * Phase 2.9.8 locks query-scope consistency: read-back queries are derived
+ * exclusively from the identities returned by the successful ingestion result.
+ * The workflow does not query input-only identities or perform opportunistic
+ * extra reads outside that committed result set.
  */
 export const createIngestionReadWorkflow = ({ ingestion, query }: IngestionReadWorkflowDependencies) => ({
   async execute(input: IngestionInput): Promise<IngestionReadWorkflowResult> {
