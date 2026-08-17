@@ -21,9 +21,14 @@ export interface IngestionReadWorkflowResult {
   readonly readBack: IngestionReadBack;
 }
 
-const requireReadBack = <T>(value: T | null | undefined, kind: string, id: string): T => {
-  if (value != null) return value;
-  throw new Error(`Committed ${kind} ${id} was not found during workflow read-back`);
+const requireReadBack = <T extends { readonly id: string }>(value: T | null | undefined, kind: string, id: string): T => {
+  if (value == null) {
+    throw new Error(`Committed ${kind} ${id} was not found during workflow read-back`);
+  }
+  if (value.id !== id) {
+    throw new Error(`Committed ${kind} ${id} was read back as ${value.id}`);
+  }
+  return value;
 };
 
 /**
@@ -38,6 +43,10 @@ const requireReadBack = <T>(value: T | null | undefined, kind: string, id: strin
  * Phase 2.9.4 locks consistency semantics: every record returned by ingestion
  * must be present in committed read-back. A missing record is a storage
  * consistency failure rather than a nullable successful result.
+ *
+ * Phase 2.9.7 locks identity consistency: a successful read-back must return
+ * the same record identity requested from the committed result, not merely a
+ * non-null record at the expected array position.
  */
 export const createIngestionReadWorkflow = ({ ingestion, query }: IngestionReadWorkflowDependencies) => ({
   async execute(input: IngestionInput): Promise<IngestionReadWorkflowResult> {
