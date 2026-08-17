@@ -13,42 +13,38 @@ const result = {
 
 describe("Phase 2.9.10 temporal consistency boundary", () => {
   it("keeps the query plan and expected result stable if the ingestion result is mutated while reads are pending", async () => {
+    const makeGate = () => {
+      let resolve!: (value: unknown) => void;
+      const promise = new Promise((res) => { resolve = res; });
+      return { promise, resolve };
+    };
     const gates = {
-      source: Promise.resolve(result.source),
-      entity1: Promise.resolve(result.entities[0]),
-      entity2: Promise.resolve(result.entities[1]),
-      assertion1: Promise.resolve(result.assertions[0]),
-      assertion2: Promise.resolve(result.assertions[1]),
-      relationship1: Promise.resolve(result.relationships[0]),
-      relationship2: Promise.resolve(result.relationships[1]),
-      evidence1: Promise.resolve(result.evidence[0]),
-      evidence2: Promise.resolve(result.evidence[1]),
-      provenance1: Promise.resolve(result.provenance[0]),
-      provenance2: Promise.resolve(result.provenance[1]),
+      source: makeGate(),
+      entity1: makeGate(), entity2: makeGate(),
+      assertion1: makeGate(), assertion2: makeGate(),
+      relationship1: makeGate(), relationship2: makeGate(),
+      evidence1: makeGate(), evidence2: makeGate(),
+      provenance1: makeGate(), provenance2: makeGate(),
     };
     const query = {
-      sources: { getById: vi.fn(() => gates.source) },
-      entities: { getById: vi.fn((id: string) => id === "entity-1" ? gates.entity1 : gates.entity2) },
-      assertions: { getById: vi.fn((id: string) => id === "assertion-1" ? gates.assertion1 : gates.assertion2) },
-      relationships: { getById: vi.fn((id: string) => id === "relationship-1" ? gates.relationship1 : gates.relationship2) },
-      evidence: { getById: vi.fn((id: string) => id === "evidence-1" ? gates.evidence1 : gates.evidence2) },
-      provenance: { getById: vi.fn((id: string) => id === "provenance-1" ? gates.provenance1 : gates.provenance2) },
+      sources: { getById: vi.fn(() => gates.source.promise as never) },
+      entities: { getById: vi.fn((id: string) => (id === "entity-1" ? gates.entity1.promise : gates.entity2.promise) as never) },
+      assertions: { getById: vi.fn((id: string) => (id === "assertion-1" ? gates.assertion1.promise : gates.assertion2.promise) as never) },
+      relationships: { getById: vi.fn((id: string) => (id === "relationship-1" ? gates.relationship1.promise : gates.relationship2.promise) as never) },
+      evidence: { getById: vi.fn((id: string) => (id === "evidence-1" ? gates.evidence1.promise : gates.evidence2.promise) as never) },
+      provenance: { getById: vi.fn((id: string) => (id === "provenance-1" ? gates.provenance1.promise : gates.provenance2.promise) as never) },
     };
-    let release!: () => void;
-    const pending = new Promise<void>((resolve) => { release = resolve; });
-    const ingestion = {
-      ingest: vi.fn().mockImplementation(async () => {
-        const committed = result;
-        const execution = workflow.executeReadBack?.();
-        void execution;
-        return committed;
-      }),
-    };
-    void pending;
-    const workflow = createIngestionReadWorkflow({ ingestion: ingestion as never, query: query as never });
+    const ingestion = { ingest: vi.fn().mockResolvedValue(result) };
+    const workflow = createIngestionReadWorkflow({ ingestion, query: query as never });
     const execution = workflow.execute({ source: { id: "source-1", kind: "repository" } } as never);
-    await vi.waitFor(() => expect(query.entities.getById).toHaveBeenCalledWith("entity-1"));
-    await vi.waitFor(() => expect(query.entities.getById).toHaveBeenCalledWith("entity-2"));
+
+    await vi.waitFor(() => {
+      expect(query.entities.getById).toHaveBeenCalledWith("entity-1");
+      expect(query.entities.getById).toHaveBeenCalledWith("entity-2");
+      expect(query.assertions.getById).toHaveBeenCalledWith("assertion-1");
+      expect(query.assertions.getById).toHaveBeenCalledWith("assertion-2");
+    });
+
     result.entities.reverse();
     result.assertions.reverse();
     result.relationships.reverse();
@@ -56,7 +52,14 @@ describe("Phase 2.9.10 temporal consistency boundary", () => {
     result.provenance.reverse();
     result.entities.push({ id: "entity-extra" } as never);
     result.assertions.push({ id: "assertion-extra" } as never);
-    release();
+
+    gates.source.resolve(result.source);
+    gates.entity1.resolve({ id: "entity-1" }); gates.entity2.resolve({ id: "entity-2" });
+    gates.assertion1.resolve({ id: "assertion-1" }); gates.assertion2.resolve({ id: "assertion-2" });
+    gates.relationship1.resolve({ id: "relationship-1" }); gates.relationship2.resolve({ id: "relationship-2" });
+    gates.evidence1.resolve({ id: "evidence-1" }); gates.evidence2.resolve({ id: "evidence-2" });
+    gates.provenance1.resolve({ id: "provenance-1" }); gates.provenance2.resolve({ id: "provenance-2" });
+
     const output = await execution;
     expect(output.readBack.entities.map((value) => value.id)).toEqual(["entity-1", "entity-2"]);
     expect(output.readBack.assertions.map((value) => value.id)).toEqual(["assertion-1", "assertion-2"]);
